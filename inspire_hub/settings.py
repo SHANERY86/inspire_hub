@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-dev-key-change-in-production-123456789'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -60,11 +60,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'inspire_hub.wsgi.application'
 
 
-# Database - Using SQLite for now
+# Database - PostgreSQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'inspire_hub',
+        'USER': 'sryan',
+        'PASSWORD': '',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

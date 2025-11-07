@@ -1,4 +1,17 @@
 from django.db import models
 
-# Models will be added in the next phase
+
+class Note(models.Model):
+    """Note model matching the existing PostgreSQL table"""
+    title = models.CharField(max_length=255)
+    date = models.DateTimeField(auto_now_add=True)
+    note = models.TextField()
+    media_type = models.CharField(max_length=50)
+    
+    class Meta:
+        db_table = 'note'  # Use existing table name
+        managed = False  # Don't let Django manage this table
+    
+    def __str__(self):
+        return f"{self.title} - {self.date.strftime('%Y-%m-%d')}"
 

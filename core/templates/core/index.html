@@ -80,6 +80,21 @@
             border-left: 4px solid #f39c12;
             border-radius: 4px;
         }
+        
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
@@ -110,6 +125,9 @@
                 <li>Add search and filtering</li>
             </ul>
         </div>
+        
+        <a href="{% url 'core:notes_list' %}" class="btn">View My Notes</a>
+        <a href="{% url 'core:add_note' %}" class="btn">Add New Note</a>
     </div>
 </body>
 </html>
