@@ -12,7 +12,6 @@ Basic Django project structure with a simple home page.
 - **Admin interface** - Free, professional admin panel
 - **Social-ready** - Easy to add user profiles, following, sharing
 - **Enterprise-grade** - Security, scalability, production-ready
-- **Perfect for Red Hat interview** - Shows understanding of enterprise tools
 
 ## Prerequisites
 
