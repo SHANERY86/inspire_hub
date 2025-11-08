@@ -10,7 +10,6 @@ class Note(models.Model):
     
     class Meta:
         db_table = 'note'  # Use existing table name
-        managed = False  # Don't let Django manage this table
     
     def __str__(self):
         return f"{self.title} - {self.date.strftime('%Y-%m-%d')}"
