@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Notes - Inspire Hub</title>
+    <title>My Inspirations - Inspire Hub</title>
     <style>
         * {
             margin: 0;
@@ -63,7 +63,7 @@
             background-color: #2980b9;
         }
         
-        .note-card {
+        .inspiration-card {
             background: #f8f9fa;
             padding: 20px;
             margin-bottom: 20px;
@@ -71,20 +71,20 @@
             border-left: 4px solid #3498db;
         }
         
-        .note-header {
+        .inspiration-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         }
         
-        .note-title {
+        .inspiration-title {
             font-size: 1.3em;
             font-weight: 600;
             color: #2c3e50;
         }
         
-        .note-meta {
+        .inspiration-meta {
             display: flex;
             gap: 15px;
             font-size: 0.9em;
@@ -92,7 +92,7 @@
             margin-bottom: 10px;
         }
         
-        .note-badge {
+        .inspiration-badge {
             background: #3498db;
             color: white;
             padding: 3px 10px;
@@ -100,7 +100,7 @@
             font-size: 0.85em;
         }
         
-        .note-content {
+        .inspiration-content {
             color: #555;
             line-height: 1.8;
             white-space: pre-wrap;
@@ -122,31 +122,31 @@
         <div class="header">
             <div>
                 <a href="{% url 'core:home' %}" class="nav-link">← Home</a>
-                <h1 style="display: inline;">My Notes</h1>
+                <h1 style="display: inline;">My Inspirations</h1>
             </div>
-            <a href="{% url 'core:add_note' %}" class="btn">+ Add New Note</a>
+            <a href="{% url 'core:add_inspiration' %}" class="btn">+ Add New Inspiration</a>
         </div>
         
-        {% if notes %}
-            {% for note in notes %}
-            <div class="note-card">
-                <div class="note-header">
-                    <div class="note-title">{{ note.title }}</div>
-                    <span class="note-badge">{{ note.media_type }}</span>
+        {% if inspirations %}
+            {% for inspiration in inspirations %}
+            <div class="inspiration-card">
+                <div class="inspiration-header">
+                    <div class="inspiration-title">{{ inspiration.title }}</div>
+                    <span class="inspiration-badge">{{ inspiration.source_type }}</span>
                 </div>
-                <div class="note-meta">
-                    <span>📅 {{ note.date|date:"F d, Y" }}</span>
-                    <span>🕐 {{ note.date|date:"g:i A" }}</span>
+                <div class="inspiration-meta">
+                    <span>📅 {{ inspiration.date|date:"F d, Y" }}</span>
+                    <span>🕐 {{ inspiration.date|date:"g:i A" }}</span>
                 </div>
-                <div class="note-content">{{ note.note }}</div>
+                <div class="inspiration-content">{{ inspiration.content }}</div>
             </div>
             {% endfor %}
         {% else %}
             <div class="empty-state">
-                <h2>No notes yet</h2>
-                <p>Start capturing your inspiration by adding your first note!</p>
+                <h2>No inspirations yet</h2>
+                <p>Start capturing your inspiration by adding your first entry!</p>
                 <br>
-                <a href="{% url 'core:add_note' %}" class="btn">Create Your First Note</a>
+                <a href="{% url 'core:add_inspiration' %}" class="btn">Create Your First Inspiration</a>
             </div>
         {% endif %}
     </div>
