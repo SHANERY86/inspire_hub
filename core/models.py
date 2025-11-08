@@ -24,6 +24,7 @@ class Screenshot(models.Model):
         related_name='screenshots'
     )
     image = models.ImageField(upload_to='screenshots/')
+    extracted_text = models.TextField(blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

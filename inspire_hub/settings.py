@@ -3,13 +3,14 @@ Django settings for inspire_hub project.
 """
 
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-dev-key-change-in-production-123456789'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production-123456789')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -106,4 +107,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# OCR.space API Configuration
+OCR_SPACE_API_KEY = config('OCR_SPACE_API_KEY')
 

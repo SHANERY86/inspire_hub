@@ -43,3 +43,6 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 
+# Media uploads
+media/screenshots/
+
