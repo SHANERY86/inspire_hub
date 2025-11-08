@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview & Edit - Inspire Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        
+        .form-summary {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        
+        .form-summary h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .form-summary-item {
+            margin-bottom: 10px;
+        }
+        
+        .form-summary-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .screenshots-section h2 {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .screenshot-preview {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .screenshot-preview img {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+        }
+        
+        .screenshot-preview label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .screenshot-preview textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        .hint {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: #27ae60;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #229954;
+        }
+        
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Preview & Edit Extracted Text</h1>
+        <p class="subtitle">Review the OCR results and edit any text before saving</p>
+        
+        <!-- Form Summary -->
+        <div class="form-summary">
+            <h2>Inspiration Details</h2>
+            <div class="form-summary-item">
+                <span class="form-summary-label">Source Title:</span> {{ form_data.source_title }}
+            </div>
+            <div class="form-summary-item">
+                <span class="form-summary-label">Source Type:</span> {{ form_data.source_type|title }}
+            </div>
+            <div class="form-summary-item">
+                <span class="form-summary-label">Essence:</span> {{ form_data.essence }}
+            </div>
+            <div class="form-summary-item">
+                <span class="form-summary-label">Content:</span> {{ form_data.content }}
+            </div>
+        </div>
+        
+        <!-- Screenshot Previews with Editable Text -->
+        <div class="screenshots-section">
+            <h2>Screenshots & Extracted Text</h2>
+            
+            <form method="POST" action="">
+                {% csrf_token %}
+                
+                {% for screenshot in screenshot_data %}
+                <div class="screenshot-preview">
+                    <img src="data:image/jpeg;base64,{{ screenshot.image_base64 }}" alt="Screenshot {{ forloop.counter }}">
+                    
+                    <label for="extracted_text_{{ forloop.counter0 }}">
+                        Extracted Text (Screenshot {{ forloop.counter }})
+                    </label>
+                    <textarea 
+                        id="extracted_text_{{ forloop.counter0 }}" 
+                        name="extracted_text_{{ forloop.counter0 }}"
+                    >{{ screenshot.extracted_text }}</textarea>
+                    <div class="hint">✏️ Edit or delete any unwanted text above</div>
+                </div>
+                {% endfor %}
+                
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">💾 Save Inspiration</button>
+                    <a href="{% url 'core:add_inspiration' %}" class="btn btn-secondary">← Cancel & Go Back</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -1,9 +1,11 @@
 from django.shortcuts import render, redirect
 from django.conf import settings
+from django.core.files.base import ContentFile
 from .models import Inspiration, Screenshot
 from PIL import Image
 import requests
 import io
+import base64
 
 
 def home(request):
@@ -12,24 +14,19 @@ def home(request):
 
 
 def add_inspiration(request):
-    """Add inspiration page view"""
+    """Step 1: Add inspiration form"""
     if request.method == 'POST':
         # Get form data
-        source_title = request.POST.get('source_title')
-        essence = request.POST.get('essence')
-        content = request.POST.get('content')
-        source_type = request.POST.get('source_type')
+        form_data = {
+            'source_title': request.POST.get('source_title'),
+            'essence': request.POST.get('essence'),
+            'content': request.POST.get('content'),
+            'source_type': request.POST.get('source_type'),
+        }
         
-        # Save inspiration to database
-        inspiration = Inspiration.objects.create(
-            source_title=source_title,
-            essence=essence,
-            content=content,
-            source_type=source_type
-        )
-        
-        # Handle screenshot uploads
+        # Handle screenshot uploads and extract text
         screenshots = request.FILES.getlist('screenshots')
+        screenshot_data = []
         
         for uploaded_file in screenshots:
             # Extract text using OCR.space API
@@ -53,10 +50,7 @@ def add_inspiration(request):
                 image.save(compressed, format='JPEG', quality=92, optimize=True)
                 compressed.seek(0)
                 
-                # Reset original file pointer for later saving
-                uploaded_file.seek(0)
-                
-                # Call OCR.space API with compressed image
+                # Call OCR.space API
                 response = requests.post(
                     'https://api.ocr.space/parse/image',
                     files={'file': ('image.jpg', compressed, 'image/jpeg')},
@@ -66,7 +60,7 @@ def add_inspiration(request):
                         'isOverlayRequired': False,
                         'detectOrientation': True,
                         'scale': True,
-                        'OCREngine': 2  # Engine 2 is better for most cases
+                        'OCREngine': 2
                     }
                 )
                 
@@ -81,17 +75,78 @@ def add_inspiration(request):
             except Exception as e:
                 extracted_text = f"Error extracting text: {str(e)}"
             
-            # Save screenshot with extracted text
+            # Convert image to base64 for preview (reset file pointer first)
+            uploaded_file.seek(0)
+            image_data = uploaded_file.read()
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+            
+            screenshot_data.append({
+                'image_base64': image_base64,
+                'filename': uploaded_file.name,
+                'extracted_text': extracted_text
+            })
+        
+        # Store in session for preview page
+        request.session['form_data'] = form_data
+        request.session['screenshot_data'] = screenshot_data
+        
+        # Redirect to preview page
+        return redirect('core:preview_inspiration')
+    
+    return render(request, 'core/add_inspiration.html')
+
+
+def preview_inspiration(request):
+    """Step 2: Preview and edit extracted text"""
+    if request.method == 'POST':
+        # Final save with edited text
+        form_data = request.session.get('form_data', {})
+        screenshot_data = request.session.get('screenshot_data', [])
+        
+        # Create inspiration
+        inspiration = Inspiration.objects.create(
+            source_title=form_data['source_title'],
+            essence=form_data['essence'],
+            content=form_data['content'],
+            source_type=form_data['source_type']
+        )
+        
+        # Save screenshots with edited text
+        for idx, screenshot_info in enumerate(screenshot_data):
+            # Get edited text from form
+            edited_text = request.POST.get(f'extracted_text_{idx}', screenshot_info['extracted_text'])
+            
+            # Decode base64 image
+            image_data = base64.b64decode(screenshot_info['image_base64'])
+            
+            # Save screenshot
             Screenshot.objects.create(
                 inspiration=inspiration,
-                image=uploaded_file,
-                extracted_text=extracted_text
+                image=ContentFile(image_data, name=screenshot_info['filename']),
+                extracted_text=edited_text
             )
+        
+        # Clear session
+        del request.session['form_data']
+        del request.session['screenshot_data']
         
         # Redirect to inspirations list
         return redirect('core:inspirations_list')
     
-    return render(request, 'core/add_inspiration.html')
+    # Get data from session
+    form_data = request.session.get('form_data', {})
+    screenshot_data = request.session.get('screenshot_data', [])
+    
+    if not form_data:
+        # No data in session, redirect back to form
+        return redirect('core:add_inspiration')
+    
+    context = {
+        'form_data': form_data,
+        'screenshot_data': screenshot_data
+    }
+    
+    return render(request, 'core/preview_inspiration.html', context)
 
 
 def inspirations_list(request):
