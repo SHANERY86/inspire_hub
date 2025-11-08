@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.contrib import messages
 from .models import Inspiration, Screenshot
 from PIL import Image
 import requests
@@ -20,13 +21,19 @@ def add_inspiration(request):
         form_data = {
             'source_title': request.POST.get('source_title'),
             'essence': request.POST.get('essence'),
-            'content': request.POST.get('content'),
+            'user_thoughts': request.POST.get('user_thoughts', ''),
             'source_type': request.POST.get('source_type'),
+            'reference': request.POST.get('reference', ''),
         }
         
         # Handle screenshot uploads and extract text
         screenshots = request.FILES.getlist('screenshots')
         screenshot_data = []
+        
+        # Validation: If no screenshots, user_thoughts is required
+        if not screenshots and not form_data['user_thoughts'].strip():
+            messages.error(request, 'Please either upload a screenshot or enter your thoughts.')
+            return render(request, 'core/add_inspiration.html')
         
         for uploaded_file in screenshots:
             # Extract text using OCR.space API
@@ -103,28 +110,45 @@ def preview_inspiration(request):
         form_data = request.session.get('form_data', {})
         screenshot_data = request.session.get('screenshot_data', [])
         
-        # Create inspiration
+        # Get user's manual thoughts (NOT including OCR text)
+        user_thoughts = form_data.get('user_thoughts', '').strip()
+        
+        # Collect all edited OCR text for inspiration_quote
+        all_extracted_texts = []
+        for idx, screenshot_info in enumerate(screenshot_data):
+            edited_text = request.POST.get(f'extracted_text_{idx}', screenshot_info['extracted_text'])
+            if edited_text.strip():
+                all_extracted_texts.append(edited_text)
+        
+        # Combine all OCR text into quote
+        quote = "\n\n".join(all_extracted_texts) if all_extracted_texts else None
+        
+        # Create inspiration with separate quote and thoughts
         inspiration = Inspiration.objects.create(
             source_title=form_data['source_title'],
             essence=form_data['essence'],
-            content=form_data['content'],
-            source_type=form_data['source_type']
+            quote=quote,
+            user_thoughts=user_thoughts if user_thoughts else None,
+            source_type=form_data['source_type'],
+            reference=form_data['reference'] if form_data['reference'] else None
         )
         
-        # Save screenshots with edited text
+        # Save screenshot IMAGES only if checkbox is checked
         for idx, screenshot_info in enumerate(screenshot_data):
-            # Get edited text from form
-            edited_text = request.POST.get(f'extracted_text_{idx}', screenshot_info['extracted_text'])
+            keep_screenshot = request.POST.get(f'keep_screenshot_{idx}')
             
-            # Decode base64 image
-            image_data = base64.b64decode(screenshot_info['image_base64'])
-            
-            # Save screenshot
-            Screenshot.objects.create(
-                inspiration=inspiration,
-                image=ContentFile(image_data, name=screenshot_info['filename']),
-                extracted_text=edited_text
-            )
+            if keep_screenshot:  # Only save screenshot image if checkbox was checked
+                edited_text = request.POST.get(f'extracted_text_{idx}', screenshot_info['extracted_text'])
+                
+                # Decode base64 image
+                image_data = base64.b64decode(screenshot_info['image_base64'])
+                
+                # Save screenshot
+                Screenshot.objects.create(
+                    inspiration=inspiration,
+                    image=ContentFile(image_data, name=screenshot_info['filename']),
+                    extracted_text=edited_text
+                )
         
         # Clear session
         del request.session['form_data']

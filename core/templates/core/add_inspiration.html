@@ -100,6 +100,14 @@
         
         <h1>Add New Inspiration</h1>
         
+        {% if messages %}
+            {% for message in messages %}
+                <div style="padding: 12px; margin-bottom: 20px; background-color: #e74c3c; color: white; border-radius: 4px;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
         <form method="POST" action="" enctype="multipart/form-data">
             {% csrf_token %}
             
@@ -114,8 +122,16 @@
                     <option value="book">Book</option>
                     <option value="comic">Comic</option>
                     <option value="film">Film</option>
+                    <option value="magazine">Magazine</option>
+                    <option value="newspaper">Newspaper</option>
+                    <option value="website">Website</option>
                     <option value="other">Other</option>
                 </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="reference">Additional Reference</label>
+                <input type="text" id="reference" name="reference" placeholder="page number, magazine issue, newspaper date or other...">
             </div>
             
             <div class="form-group">
@@ -124,8 +140,8 @@
             </div>
             
             <div class="form-group">
-                <label for="content">Content</label>
-                <textarea id="content" name="content" required></textarea>
+                <label for="user_thoughts">Your Thoughts</label>
+                <textarea id="user_thoughts" name="user_thoughts" placeholder="Some of your thoughts.. or say nothing if its perfect as it is"></textarea>
             </div>
             
             <div class="form-group">

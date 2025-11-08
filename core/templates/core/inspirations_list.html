@@ -179,12 +179,29 @@
                     <div class="inspiration-essence">{{ inspiration.essence }}</div>
                     <span class="inspiration-badge">{{ inspiration.source_type }}</span>
                 </div>
-                <div class="inspiration-source">{{ inspiration.source_type|title }}: {{ inspiration.source_title }}</div>
+                <div class="inspiration-source">
+                    {{ inspiration.source_type|title }}: {{ inspiration.source_title }}
+                    {% if inspiration.reference %}
+                    <span style="color: #95a5a6;"> • {{ inspiration.reference }}</span>
+                    {% endif %}
+                </div>
                 <div class="inspiration-meta">
                     <span>📅 {{ inspiration.date|date:"F d, Y" }}</span>
                     <span>🕐 {{ inspiration.date|date:"g:i A" }}</span>
                 </div>
-                <div class="inspiration-content">{{ inspiration.content }}</div>
+                {% if inspiration.quote %}
+                <div style="margin-top: 15px;">
+                    <div style="font-weight: 600; color: #555; margin-bottom: 5px;">Quote</div>
+                    <div class="inspiration-content">{{ inspiration.quote }}</div>
+                </div>
+                {% endif %}
+                
+                {% if inspiration.user_thoughts %}
+                <div style="margin-top: 15px;">
+                    <div style="font-weight: 600; color: #555; margin-bottom: 5px;">Your Thoughts</div>
+                    <div class="inspiration-content">{{ inspiration.user_thoughts }}</div>
+                </div>
+                {% endif %}
                 
                 {% if inspiration.screenshots.all %}
                     <div class="screenshots">

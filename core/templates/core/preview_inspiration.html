@@ -218,12 +218,19 @@
             <div class="form-summary-item">
                 <span class="form-summary-label">Source Type:</span> {{ form_data.source_type|title }}
             </div>
+            {% if form_data.reference %}
+            <div class="form-summary-item">
+                <span class="form-summary-label">Additional Reference:</span> {{ form_data.reference }}
+            </div>
+            {% endif %}
             <div class="form-summary-item">
                 <span class="form-summary-label">Essence:</span> {{ form_data.essence }}
             </div>
+            {% if form_data.user_thoughts %}
             <div class="form-summary-item">
-                <span class="form-summary-label">Content:</span> {{ form_data.content }}
+                <span class="form-summary-label">Your Thoughts:</span> {{ form_data.user_thoughts }}
             </div>
+            {% endif %}
         </div>
         
         <!-- Screenshot Previews with Editable Text -->
@@ -235,10 +242,25 @@
                 
                 {% for screenshot in screenshot_data %}
                 <div class="screenshot-preview">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">Screenshot {{ forloop.counter }}</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input 
+                                type="checkbox" 
+                                name="keep_screenshot_{{ forloop.counter0 }}" 
+                                id="keep_checkbox_{{ forloop.counter0 }}"
+                                checked
+                                style="width: 20px; height: 20px; cursor: pointer;"
+                                onchange="toggleScreenshot({{ forloop.counter0 }})"
+                            >
+                            <span id="keep_label_{{ forloop.counter0 }}" style="font-weight: 600; color: #27ae60;">✓ Keep this screenshot</span>
+                        </label>
+                    </div>
+                    
                     <img src="data:image/jpeg;base64,{{ screenshot.image_base64 }}" alt="Screenshot {{ forloop.counter }}">
                     
                     <label for="extracted_text_{{ forloop.counter0 }}">
-                        Extracted Text (Screenshot {{ forloop.counter }})
+                        Extracted Text
                     </label>
                     
                     <!-- Selectable text area -->
@@ -276,6 +298,19 @@
                 {% for screenshot in screenshot_data %}
                 originalText[{{ forloop.counter0 }}] = `{{ screenshot.extracted_text|escapejs }}`;
                 {% endfor %}
+                
+                function toggleScreenshot(index) {
+                    const checkbox = document.getElementById(`keep_checkbox_${index}`);
+                    const label = document.getElementById(`keep_label_${index}`);
+                    
+                    if (checkbox.checked) {
+                        label.textContent = '✓ Keep this screenshot';
+                        label.style.color = '#27ae60';
+                    } else {
+                        label.textContent = '✗ Screenshot will not be saved';
+                        label.style.color = '#e74c3c';
+                    }
+                }
                 
                 function keepSelected(index) {
                     const selector = document.getElementById(`selector_${index}`);

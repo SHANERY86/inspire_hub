@@ -6,8 +6,10 @@ class Inspiration(models.Model):
     source_title = models.CharField(max_length=255)
     essence = models.CharField(max_length=255)
     date = models.DateTimeField(auto_now_add=True)
-    content = models.TextField()
+    quote = models.TextField(blank=True, null=True)  # OCR extracted text
+    user_thoughts = models.TextField(blank=True, null=True)
     source_type = models.CharField(max_length=50)
+    reference = models.CharField(max_length=255, blank=True, null=True)
     
     class Meta:
         db_table = 'inspiration'
