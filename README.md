@@ -78,13 +78,12 @@ inspire_hub/
 
 ## Roadmap
 
-- **Draft 1** (Current): Basic Django setup with home page ✓
-- **Draft 2** (Next): Add database models and CRUD operations for entries
+- **Draft 1** : Basic Django setup with home page 
+- **Draft 2** : Add database models and CRUD operations for entries
 - **Draft 3**: Add user authentication and user-specific entries
 - **Draft 4**: Add PostgreSQL database
 - **Draft 5**: Add screenshot/video upload capability
-- **Draft 6**: Add OCR for converting text in images to searchable text
-- **Draft 7**: Add social features (profiles, sharing, following)
+- **Draft 6** (Current): Add OCR for converting text in images to searchable text ✓
 
 ## Development Notes
 
