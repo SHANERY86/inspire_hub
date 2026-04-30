@@ -65,11 +65,11 @@ WSGI_APPLICATION = 'inspire_hub.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'inspire_hub',
-        'USER': 'sryan',
-        'PASSWORD': '',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': config('DB_NAME', default='inspire_hub'),
+        'USER': config('DB_USER', default='sryan'),
+        'PASSWORD': config('DB_PASSWORD', default=''),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
     }
 }
 
@@ -109,5 +109,5 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OCR.space API Configuration
-OCR_SPACE_API_KEY = config('OCR_SPACE_API_KEY')
+OCR_SPACE_API_KEY = config('OCR_SPACE_API_KEY', default='')
 

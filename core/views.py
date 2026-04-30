@@ -38,46 +38,61 @@ def add_inspiration(request):
         for uploaded_file in screenshots:
             # Extract text using OCR.space API
             try:
-                # Open and compress image
-                image = Image.open(uploaded_file)
-                
-                # Resize if too large
-                max_width = 2000
-                if image.width > max_width:
-                    ratio = max_width / image.width
-                    new_size = (max_width, int(image.height * ratio))
-                    image = image.resize(new_size, Image.Resampling.LANCZOS)
-                
-                # Convert to RGB if needed (for JPEG)
-                if image.mode in ('RGBA', 'P'):
-                    image = image.convert('RGB')
-                
-                # Save compressed image to bytes
-                compressed = io.BytesIO()
-                image.save(compressed, format='JPEG', quality=92, optimize=True)
-                compressed.seek(0)
-                
-                # Call OCR.space API
-                response = requests.post(
-                    'https://api.ocr.space/parse/image',
-                    files={'file': ('image.jpg', compressed, 'image/jpeg')},
-                    data={
-                        'apikey': settings.OCR_SPACE_API_KEY,
-                        'language': 'eng',
-                        'isOverlayRequired': False,
-                        'detectOrientation': True,
-                        'scale': True,
-                        'OCREngine': 2
-                    }
-                )
-                
-                # Parse response
-                result = response.json()
-                if result.get('IsErroredOnProcessing'):
-                    extracted_text = f"OCR Error: {result.get('ErrorMessage', 'Unknown error')}"
+                # Check if API key is configured
+                if not settings.OCR_SPACE_API_KEY:
+                    extracted_text = "OCR API key not configured. Please add OCR_SPACE_API_KEY to your .env file."
                 else:
-                    parsed_text = result.get('ParsedResults', [{}])[0].get('ParsedText', '')
-                    extracted_text = parsed_text.strip() if parsed_text.strip() else "No text detected in image"
+                    # Open and compress image
+                    image = Image.open(uploaded_file)
+                    
+                    # Resize if too large
+                    max_width = 2000
+                    if image.width > max_width:
+                        ratio = max_width / image.width
+                        new_size = (max_width, int(image.height * ratio))
+                        image = image.resize(new_size, Image.Resampling.LANCZOS)
+                    
+                    # Convert to RGB if needed (for JPEG)
+                    if image.mode in ('RGBA', 'P'):
+                        image = image.convert('RGB')
+                    
+                    # Save compressed image to bytes
+                    compressed = io.BytesIO()
+                    image.save(compressed, format='JPEG', quality=92, optimize=True)
+                    compressed.seek(0)
+                    
+                    # Call OCR.space API
+                    response = requests.post(
+                        'https://api.ocr.space/parse/image',
+                        files={'file': ('image.jpg', compressed, 'image/jpeg')},
+                        data={
+                            'apikey': settings.OCR_SPACE_API_KEY,
+                            'language': 'eng',
+                            'isOverlayRequired': False,
+                            'detectOrientation': True,
+                            'scale': True,
+                            'OCREngine': 2
+                        }
+                    )
+                    
+                    # Parse response - handle both JSON and string responses
+                    try:
+                        result = response.json()
+                    except ValueError:
+                        # Response is not JSON (likely an error message)
+                        extracted_text = f"OCR API Error: {response.text[:200]}"
+                    else:
+                        # Check if result is a dict (JSON) or string
+                        if isinstance(result, str):
+                            extracted_text = f"OCR API returned: {result[:200]}"
+                        elif isinstance(result, dict):
+                            if result.get('IsErroredOnProcessing'):
+                                extracted_text = f"OCR Error: {result.get('ErrorMessage', 'Unknown error')}"
+                            else:
+                                parsed_text = result.get('ParsedResults', [{}])[0].get('ParsedText', '')
+                                extracted_text = parsed_text.strip() if parsed_text.strip() else "No text detected in image"
+                        else:
+                            extracted_text = f"Unexpected OCR response format: {type(result)}"
                     
             except Exception as e:
                 extracted_text = f"Error extracting text: {str(e)}"
