@@ -1,12 +1,16 @@
-from django.shortcuts import render, redirect
+import base64
+import binascii
+import io
+
+import requests
 from django.conf import settings
-from django.core.files.base import ContentFile
 from django.contrib import messages
+from django.core.files.base import ContentFile
+from django.db import DatabaseError, transaction
+from django.shortcuts import redirect, render
+
 from .models import Inspiration, Screenshot
 from PIL import Image
-import requests
-import io
-import base64
 
 
 def home(request):
@@ -118,66 +122,125 @@ def add_inspiration(request):
     return render(request, 'core/add_inspiration.html')
 
 
+def _preview_session_valid(form_data, screenshot_data):
+    """Return True if session payload is usable for preview/save."""
+    if not isinstance(form_data, dict) or not form_data:
+        return False
+    required = ('source_title', 'essence', 'source_type')
+    if not all(str(form_data.get(k) or '').strip() for k in required):
+        return False
+    if screenshot_data is not None and not isinstance(screenshot_data, list):
+        return False
+    return True
+
+
 def preview_inspiration(request):
     """Step 2: Preview and edit extracted text"""
     if request.method == 'POST':
-        # Final save with edited text
-        form_data = request.session.get('form_data', {})
-        screenshot_data = request.session.get('screenshot_data', [])
-        
-        # Get user's manual thoughts (NOT including OCR text)
-        user_thoughts = form_data.get('user_thoughts', '').strip()
-        
-        # Collect all edited OCR text for inspiration_quote
+        form_data = request.session.get('form_data') or {}
+        screenshot_data = request.session.get('screenshot_data') or []
+
+        if not _preview_session_valid(form_data, screenshot_data):
+            messages.error(
+                request,
+                'Your session expired or the form data is incomplete. Please start again.',
+            )
+            request.session.pop('form_data', None)
+            request.session.pop('screenshot_data', None)
+            return redirect('core:add_inspiration')
+
+        user_thoughts = (form_data.get('user_thoughts') or '').strip()
+
         all_extracted_texts = []
         for idx, screenshot_info in enumerate(screenshot_data):
-            edited_text = request.POST.get(f'extracted_text_{idx}', screenshot_info['extracted_text'])
-            if edited_text.strip():
+            if not isinstance(screenshot_info, dict):
+                continue
+            # Prefer whatever the user submitted. If the textarea is empty,
+            # we do not want to silently fall back to the original OCR text.
+            edited_text = request.POST.get(f'extracted_text_{idx}', '')
+            if edited_text and edited_text.strip():
                 all_extracted_texts.append(edited_text)
-        
-        # Combine all OCR text into quote
+
         quote = "\n\n".join(all_extracted_texts) if all_extracted_texts else None
-        
-        # Create inspiration with separate quote and thoughts
-        inspiration = Inspiration.objects.create(
-            source_title=form_data['source_title'],
-            essence=form_data['essence'],
-            quote=quote,
-            user_thoughts=user_thoughts if user_thoughts else None,
-            source_type=form_data['source_type'],
-            reference=form_data['reference'] if form_data['reference'] else None
-        )
-        
-        # Save screenshot IMAGES only if checkbox is checked
-        for idx, screenshot_info in enumerate(screenshot_data):
-            keep_screenshot = request.POST.get(f'keep_screenshot_{idx}')
-            
-            if keep_screenshot:  # Only save screenshot image if checkbox was checked
-                edited_text = request.POST.get(f'extracted_text_{idx}', screenshot_info['extracted_text'])
-                
-                # Decode base64 image
-                image_data = base64.b64decode(screenshot_info['image_base64'])
-                
-                # Save screenshot
-                Screenshot.objects.create(
-                    inspiration=inspiration,
-                    image=ContentFile(image_data, name=screenshot_info['filename']),
-                    extracted_text=edited_text
+        reference = form_data.get('reference')
+        reference = reference.strip() if isinstance(reference, str) and reference.strip() else None
+
+        try:
+            with transaction.atomic():
+                inspiration = Inspiration.objects.create(
+                    source_title=form_data['source_title'].strip(),
+                    essence=form_data['essence'].strip(),
+                    quote=quote,
+                    user_thoughts=user_thoughts if user_thoughts else None,
+                    source_type=form_data['source_type'].strip(),
+                    reference=reference,
                 )
-        
-        # Clear session
-        del request.session['form_data']
-        del request.session['screenshot_data']
-        
-        # Redirect to inspirations list
+
+                for idx, screenshot_info in enumerate(screenshot_data):
+                    if not isinstance(screenshot_info, dict):
+                        messages.warning(
+                            request,
+                            f'Screenshot {idx + 1} had invalid data and was skipped.',
+                        )
+                        continue
+
+                    if not request.POST.get(f'keep_screenshot_{idx}'):
+                        continue
+
+                    edited_text = request.POST.get(f'extracted_text_{idx}', '')
+                    b64 = screenshot_info.get('image_base64')
+                    filename = screenshot_info.get('filename') or f'screenshot_{idx}.jpg'
+
+                    if not b64:
+                        messages.warning(
+                            request,
+                            f'Screenshot {idx + 1} had no image data and was not saved.',
+                        )
+                        continue
+
+                    if not edited_text or not edited_text.strip():
+                        messages.warning(
+                            request,
+                            f'Screenshot {idx + 1} had empty extracted text and was not saved.',
+                        )
+                        continue
+
+                    try:
+                        image_data = base64.b64decode(b64, validate=True)
+                    except (binascii.Error, ValueError):
+                        messages.warning(
+                            request,
+                            f'Screenshot {idx + 1} could not be decoded and was not saved.',
+                        )
+                        continue
+
+                    if not image_data:
+                        messages.warning(
+                            request,
+                            f'Screenshot {idx + 1} was empty and was not saved.',
+                        )
+                        continue
+
+                    Screenshot.objects.create(
+                        inspiration=inspiration,
+                        image=ContentFile(image_data, name=filename),
+                        extracted_text=edited_text,
+                    )
+        except DatabaseError:
+            messages.error(
+                request,
+                'Could not save your inspiration. Please try again.',
+            )
+            return redirect('core:preview_inspiration')
+
+        request.session.pop('form_data', None)
+        request.session.pop('screenshot_data', None)
         return redirect('core:inspirations_list')
     
-    # Get data from session
-    form_data = request.session.get('form_data', {})
-    screenshot_data = request.session.get('screenshot_data', [])
-    
-    if not form_data:
-        # No data in session, redirect back to form
+    form_data = request.session.get('form_data') or {}
+    screenshot_data = request.session.get('screenshot_data') or []
+
+    if not _preview_session_valid(form_data, screenshot_data):
         return redirect('core:add_inspiration')
     
     context = {

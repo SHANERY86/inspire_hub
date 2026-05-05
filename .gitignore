@@ -45,4 +45,8 @@ Thumbs.db
 
 # Media uploads
 media/screenshots/
+media/screenshots/**
+
+# Personal learning notes
+LEARNING_NOTES.md
 
