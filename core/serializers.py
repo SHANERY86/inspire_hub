@@ -39,3 +39,23 @@ class ScreenshotSerializer(serializers.ModelSerializer):
             'uploaded_at',
         ]
         read_only_fields = ['id', 'uploaded_at']
+
+
+class ScreenshotDraftItemSerializer(serializers.Serializer):
+    """One screenshot row after OCR preview (commit payload)."""
+
+    image_base64 = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
+    filename = serializers.CharField(required=False, allow_blank=True, default='')
+    extracted_text = serializers.CharField(allow_blank=True, required=False, default='')
+    keep = serializers.BooleanField(required=False, default=False)
+
+
+class InspirationDraftCommitSerializer(serializers.Serializer):
+    source_title = serializers.CharField()
+    essence = serializers.CharField()
+    user_thoughts = serializers.CharField(allow_blank=True, required=False, default='')
+    source_type = serializers.CharField()
+    reference = serializers.CharField(allow_blank=True, required=False, default='')
+    screenshots = ScreenshotDraftItemSerializer(many=True, required=False, default=list)

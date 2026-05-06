@@ -1,16 +1,10 @@
-import base64
-import binascii
-import io
-
-import requests
-from django.conf import settings
 from django.contrib import messages
-from django.core.files.base import ContentFile
-from django.db import DatabaseError, transaction
+from django.db import DatabaseError
 from django.shortcuts import redirect, render
 
-from .models import Inspiration, Screenshot
-from PIL import Image
+from .inspiration_commit import commit_inspiration_with_screenshots
+from .models import Inspiration
+from .ocr_service import extract_text_from_upload, uploaded_file_to_base64
 
 
 def home(request):
@@ -40,77 +34,16 @@ def add_inspiration(request):
             return render(request, 'core/add_inspiration.html')
         
         for uploaded_file in screenshots:
-            # Extract text using OCR.space API
-            try:
-                # Check if API key is configured
-                if not settings.OCR_SPACE_API_KEY:
-                    extracted_text = "OCR API key not configured. Please add OCR_SPACE_API_KEY to your .env file."
-                else:
-                    # Open and compress image
-                    image = Image.open(uploaded_file)
-                    
-                    # Resize if too large
-                    max_width = 2000
-                    if image.width > max_width:
-                        ratio = max_width / image.width
-                        new_size = (max_width, int(image.height * ratio))
-                        image = image.resize(new_size, Image.Resampling.LANCZOS)
-                    
-                    # Convert to RGB if needed (for JPEG)
-                    if image.mode in ('RGBA', 'P'):
-                        image = image.convert('RGB')
-                    
-                    # Save compressed image to bytes
-                    compressed = io.BytesIO()
-                    image.save(compressed, format='JPEG', quality=92, optimize=True)
-                    compressed.seek(0)
-                    
-                    # Call OCR.space API
-                    response = requests.post(
-                        'https://api.ocr.space/parse/image',
-                        files={'file': ('image.jpg', compressed, 'image/jpeg')},
-                        data={
-                            'apikey': settings.OCR_SPACE_API_KEY,
-                            'language': 'eng',
-                            'isOverlayRequired': False,
-                            'detectOrientation': True,
-                            'scale': True,
-                            'OCREngine': 2
-                        }
-                    )
-                    
-                    # Parse response - handle both JSON and string responses
-                    try:
-                        result = response.json()
-                    except ValueError:
-                        # Response is not JSON (likely an error message)
-                        extracted_text = f"OCR API Error: {response.text[:200]}"
-                    else:
-                        # Check if result is a dict (JSON) or string
-                        if isinstance(result, str):
-                            extracted_text = f"OCR API returned: {result[:200]}"
-                        elif isinstance(result, dict):
-                            if result.get('IsErroredOnProcessing'):
-                                extracted_text = f"OCR Error: {result.get('ErrorMessage', 'Unknown error')}"
-                            else:
-                                parsed_text = result.get('ParsedResults', [{}])[0].get('ParsedText', '')
-                                extracted_text = parsed_text.strip() if parsed_text.strip() else "No text detected in image"
-                        else:
-                            extracted_text = f"Unexpected OCR response format: {type(result)}"
-                    
-            except Exception as e:
-                extracted_text = f"Error extracting text: {str(e)}"
-            
-            # Convert image to base64 for preview (reset file pointer first)
-            uploaded_file.seek(0)
-            image_data = uploaded_file.read()
-            image_base64 = base64.b64encode(image_data).decode('utf-8')
-            
-            screenshot_data.append({
-                'image_base64': image_base64,
-                'filename': uploaded_file.name,
-                'extracted_text': extracted_text
-            })
+            extracted_text = extract_text_from_upload(uploaded_file)
+            image_base64 = uploaded_file_to_base64(uploaded_file)
+
+            screenshot_data.append(
+                {
+                    'image_base64': image_base64,
+                    'filename': uploaded_file.name,
+                    'extracted_text': extracted_text,
+                }
+            )
         
         # Store in session for preview page
         request.session['form_data'] = form_data
@@ -149,83 +82,30 @@ def preview_inspiration(request):
             request.session.pop('screenshot_data', None)
             return redirect('core:add_inspiration')
 
-        user_thoughts = (form_data.get('user_thoughts') or '').strip()
-
-        all_extracted_texts = []
+        screenshot_rows = []
         for idx, screenshot_info in enumerate(screenshot_data):
             if not isinstance(screenshot_info, dict):
+                messages.warning(
+                    request,
+                    f'Screenshot {idx + 1} had invalid data and was skipped.',
+                )
                 continue
-            # Prefer whatever the user submitted. If the textarea is empty,
-            # we do not want to silently fall back to the original OCR text.
-            edited_text = request.POST.get(f'extracted_text_{idx}', '')
-            if edited_text and edited_text.strip():
-                all_extracted_texts.append(edited_text)
+            screenshot_rows.append(
+                {
+                    'keep': bool(request.POST.get(f'keep_screenshot_{idx}')),
+                    'extracted_text': request.POST.get(f'extracted_text_{idx}', ''),
+                    'image_base64': screenshot_info.get('image_base64'),
+                    'filename': screenshot_info.get('filename'),
+                }
+            )
 
-        quote = "\n\n".join(all_extracted_texts) if all_extracted_texts else None
-        reference = form_data.get('reference')
-        reference = reference.strip() if isinstance(reference, str) and reference.strip() else None
+        def _on_warning(idx, suffix):
+            messages.warning(request, f'Screenshot {idx + 1} {suffix}')
 
         try:
-            with transaction.atomic():
-                inspiration = Inspiration.objects.create(
-                    source_title=form_data['source_title'].strip(),
-                    essence=form_data['essence'].strip(),
-                    quote=quote,
-                    user_thoughts=user_thoughts if user_thoughts else None,
-                    source_type=form_data['source_type'].strip(),
-                    reference=reference,
-                )
-
-                for idx, screenshot_info in enumerate(screenshot_data):
-                    if not isinstance(screenshot_info, dict):
-                        messages.warning(
-                            request,
-                            f'Screenshot {idx + 1} had invalid data and was skipped.',
-                        )
-                        continue
-
-                    if not request.POST.get(f'keep_screenshot_{idx}'):
-                        continue
-
-                    edited_text = request.POST.get(f'extracted_text_{idx}', '')
-                    b64 = screenshot_info.get('image_base64')
-                    filename = screenshot_info.get('filename') or f'screenshot_{idx}.jpg'
-
-                    if not b64:
-                        messages.warning(
-                            request,
-                            f'Screenshot {idx + 1} had no image data and was not saved.',
-                        )
-                        continue
-
-                    if not edited_text or not edited_text.strip():
-                        messages.warning(
-                            request,
-                            f'Screenshot {idx + 1} had empty extracted text and was not saved.',
-                        )
-                        continue
-
-                    try:
-                        image_data = base64.b64decode(b64, validate=True)
-                    except (binascii.Error, ValueError):
-                        messages.warning(
-                            request,
-                            f'Screenshot {idx + 1} could not be decoded and was not saved.',
-                        )
-                        continue
-
-                    if not image_data:
-                        messages.warning(
-                            request,
-                            f'Screenshot {idx + 1} was empty and was not saved.',
-                        )
-                        continue
-
-                    Screenshot.objects.create(
-                        inspiration=inspiration,
-                        image=ContentFile(image_data, name=filename),
-                        extracted_text=edited_text,
-                    )
+            commit_inspiration_with_screenshots(
+                form_data, screenshot_rows, on_warning=_on_warning
+            )
         except DatabaseError:
             messages.error(
                 request,
