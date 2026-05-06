@@ -89,3 +89,9 @@ inspire_hub/
 
 Using Django for its robust user management system, admin interface, and enterprise-ready architecture. SQLite for now, will migrate to PostgreSQL later.
 
+## External API Service Example
+
+A separate FastAPI service scaffold is included at `collector_service/` to experiment with an external Python API that connects directly to PostgreSQL.
+
+See `collector_service/README.md` for setup and run steps.
+

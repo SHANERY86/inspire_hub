@@ -1,0 +1,1 @@
+# External collector service package.
