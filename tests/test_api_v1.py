@@ -85,6 +85,27 @@ class TestScreenshotCRUD:
         assert r.status_code == status.HTTP_201_CREATED
         assert Screenshot.objects.filter(inspiration=ins).count() == 1
 
+    def test_create_missing_image_returns_400(self, api_client):
+        ins = Inspiration.objects.create(
+            source_title='S',
+            essence='E',
+            source_type='book',
+        )
+        r = api_client.post(
+            '/api/v1/screenshots/',
+            {'inspiration': ins.pk},
+            format='multipart',
+        )
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_invalid_inspiration_returns_400(self, api_client):
+        r = api_client.post(
+            '/api/v1/screenshots/',
+            {'inspiration': 999999, 'image': _tiny_jpeg_upload('invalid.jpg')},
+            format='multipart',
+        )
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_list_filtered_by_inspiration_query(self, api_client):
         ins = Inspiration.objects.create(
             source_title='S',
@@ -110,6 +131,19 @@ class TestScreenshotCRUD:
         assert r.status_code == status.HTTP_200_OK
         assert r.data['count'] == 1
         assert r.data['results'][0]['inspiration'] == ins.pk
+
+    def test_list_with_invalid_inspiration_filter_returns_400(self, api_client):
+        r = api_client.get('/api/v1/screenshots/', {'inspiration': 'not-a-number'})
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'inspiration' in r.data
+
+    def test_invalid_screenshot_returns_404(self, api_client):
+        r = api_client.get('/api/v1/screenshots/9999999/')
+        assert r.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_invalid_screenshot_deletion_returns_404(self, api_client):
+        r = api_client.delete('/api/v1/screenshots/99999/')
+        assert r.status_code == status.HTTP_404_NOT_FOUND
 
     def test_retrieve_and_delete(self, api_client):
         ins = Inspiration.objects.create(

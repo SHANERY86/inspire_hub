@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 
 from .models import Inspiration, Screenshot
 from .serializers import InspirationSerializer, ScreenshotSerializer
@@ -17,5 +18,9 @@ class ScreenshotViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         inspiration = self.request.query_params.get('inspiration')
         if inspiration is not None:
-            qs = qs.filter(inspiration_id=inspiration)
+            try:
+                inspiration_id = int(inspiration)
+            except (TypeError, ValueError):
+                raise ValidationError({'inspiration': 'Must be an integer id.'})
+            qs = qs.filter(inspiration_id=inspiration_id)
         return qs
