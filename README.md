@@ -95,3 +95,21 @@ A separate FastAPI service scaffold is included at `collector_service/` to exper
 
 See `collector_service/README.md` for setup and run steps.
 
+## Container Deployment (Apache reverse proxy)
+
+A production-oriented container stack is included:
+
+- `docker-compose.yml` (Postgres + Django + frontend nginx)
+- `Dockerfile` (Django/gunicorn image)
+- `frontend/Dockerfile` (React build served by nginx)
+
+Quick start:
+
+```bash
+cp .env.example .env
+docker compose build
+docker compose up -d
+```
+
+For Apache reverse proxy setup on your host, see `docs/deploy-apache.md`.
+

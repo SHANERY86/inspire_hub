@@ -2,9 +2,19 @@ import { useEffect, useState } from 'react'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+const APP_BASE = import.meta.env.BASE_URL ?? '/'
+
+function joinUrl(base, path) {
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+  return `${normalizedBase}${normalizedPath}`
+}
 
 function apiUrl(path) {
-  return `${API_BASE}${path}`
+  if (API_BASE) {
+    return `${API_BASE}${path}`
+  }
+  return joinUrl(APP_BASE, path)
 }
 
 function getCookie(name) {
