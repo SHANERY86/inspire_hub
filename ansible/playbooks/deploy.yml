@@ -1,9 +1,13 @@
 ---
 # Pull images from GHCR and start services with docker-compose.ghcr.yml on the target.
-# Expects inspire_install_dir with .env (not committed).
+# Creates inspire_install_dir on the target if missing, then the rest. If .env is missing, it is created from templates/env.j2
+# (DB_PASSWORD = ansible_become_password). Optional: inspire_db_name, inspire_db_user, inspire_allowed_hosts,
+# inspire_csrf_origins, django_debug.
+# Required when bootstrapping .env: ocr_api_key (vault), django_key (vault) → Django SECRET_KEY.
 #
 # Inventory: inspire_install_dir, ghcr_owner. Optional: image_tag, ghcr_username, ghcr_token.
-# Vault: ansible_become_password on host (see inventory/hosts.yml).
+# Do not set play vars like `image_tag: "{{ image_tag | ... }}"` (infinite recursion); use _resolved_* below.
+# Vault: ansible_become_password, ghcr_token, ocr_api_key, django_key (see inventory/hosts.yml).
 #
 # Tags (use --tags; combine with commas e.g. --tags db,stack):
 #   always  — implied with any --tags (shared checks, compose file, optional GHCR login)
@@ -12,12 +16,17 @@
 #   frontend — frontend service only
 #   stack   — backend + frontend (no db unless you add --tags db or -e deploy_db=true)
 #   full    — entire compose file (db + backend + frontend pull/up). Default when you omit --tags
+#   env, reconfigure — same: overwrite .env from templates/env.j2 (vault secrets), then recreate backend+frontend
+#             (no image pull). Combine with other tags if needed (e.g. --tags env,stack).
+#             Postgres in .env vs an existing volume: recreating db alone may not fix auth; align creds or alter role.
 #
 # Examples:
 #   ansible-playbook playbooks/deploy.yml --ask-vault-pass
 #   ansible-playbook playbooks/deploy.yml --tags frontend --ask-vault-pass
 #   ansible-playbook playbooks/deploy.yml --tags stack --ask-vault-pass
 #   ansible-playbook playbooks/deploy.yml --tags db --ask-vault-pass
+#   ansible-playbook playbooks/deploy.yml --tags env --ask-vault-pass              # refresh .env + recreate app
+#   ansible-playbook playbooks/deploy.yml --tags reconfigure --ask-vault-pass      # alias of env
 #   ansible-playbook playbooks/deploy.yml -e deploy_db=true --ask-vault-pass   # full deploy + db phase
 #   ansible-playbook playbooks/deploy.yml --tags db,stack --ask-vault-pass     # db then app pair
 #
@@ -30,10 +39,10 @@
   vars:
     inspire_repo_root: "{{ playbook_dir | dirname | dirname }}"
     ghcr_registry: ghcr.io
-    image_tag: "{{ image_tag | default('latest') }}"
-    ghcr_username: "{{ ghcr_username | default(ghcr_owner) }}"
-    backend_image: "{{ ghcr_registry }}/{{ ghcr_owner }}/inspire-hub-backend:{{ image_tag }}"
-    frontend_image: "{{ ghcr_registry }}/{{ ghcr_owner }}/inspire-hub-frontend:{{ image_tag }}"
+    # Host var image_tag → never assign back to the same name in this block.
+    _resolved_image_tag: "{{ image_tag | default('latest') }}"
+    backend_image: "{{ ghcr_registry }}/{{ ghcr_owner }}/inspire-hub-backend:{{ _resolved_image_tag }}"
+    frontend_image: "{{ ghcr_registry }}/{{ ghcr_owner }}/inspire-hub-frontend:{{ _resolved_image_tag }}"
     compose_file: docker-compose.ghcr.yml
 
   pre_tasks:
@@ -46,19 +55,57 @@
         fail_msg: "Set inspire_install_dir and ghcr_owner on the host in inventory (see inventory/hosts.yml)."
 
   tasks:
-    - name: Install directory must exist on target
+    - name: Ensure install directory exists on target
       tags: [always]
-      ansible.builtin.stat:
+      ansible.builtin.file:
         path: "{{ inspire_install_dir }}"
-      register: install_dir
-      failed_when: not install_dir.stat.exists
+        state: directory
+        mode: "0755"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
 
-    - name: .env should exist on target
+    - name: Check for existing .env on target
       tags: [always]
       ansible.builtin.stat:
         path: "{{ inspire_install_dir }}/.env"
       register: env_file
-      failed_when: not env_file.stat.exists
+
+    - name: Require secrets when templating .env
+      tags: [always, env, reconfigure]
+      when: >-
+        (not env_file.stat.exists)
+        or ('env' in ansible_run_tags)
+        or ('reconfigure' in ansible_run_tags)
+      ansible.builtin.assert:
+        that:
+          - ocr_api_key is defined
+          - ocr_api_key | length > 0
+          - django_key is defined
+          - django_key | length >= 20
+        fail_msg: "Set vaulted ocr_api_key and django_key on the host (see inventory/hosts.yml)."
+
+    - name: Deploy .env when absent
+      tags: [always]
+      when: not env_file.stat.exists
+      ansible.builtin.template:
+        src: env.j2
+        dest: "{{ inspire_install_dir }}/.env"
+        mode: "0600"
+      no_log: true
+
+    - name: Refresh .env from template (reconfigure)
+      tags: [env, reconfigure]
+      when: >-
+        env_file.stat.exists
+        and (
+          ('env' in ansible_run_tags)
+          or ('reconfigure' in ansible_run_tags)
+        )
+      ansible.builtin.template:
+        src: env.j2
+        dest: "{{ inspire_install_dir }}/.env"
+        mode: "0600"
+      no_log: true
 
     - name: Install GHCR compose file on target
       tags: [always]
@@ -71,9 +118,26 @@
       tags: [always]
       when: ghcr_token | default('') | length > 0
       ansible.builtin.shell: |
-        set -euo pipefail
-        echo "{{ ghcr_token }}" | docker login {{ ghcr_registry }} -u "{{ ghcr_username }}" --password-stdin
-      no_log: true
+        set -eu
+        printf '%s\n' "$GHCR_TOKEN" | docker login {{ ghcr_registry }} -u "{{ ghcr_username | default(ghcr_owner) }}" --password-stdin
+      environment:
+        GHCR_TOKEN: "{{ ghcr_token | trim }}"
+      register: ghcr_login
+      changed_when: "'Login Succeeded' in ghcr_login.stdout | default('')"
+      # no_log omitted so failures show Docker's message (avoid ansible-playbook -vvv in shared logs; token is in env, not usually echoed back).
+
+    - name: Recreate app containers to pick up new .env
+      tags: [env, reconfigure]
+      when: >-
+        ('env' in ansible_run_tags)
+        or ('reconfigure' in ansible_run_tags)
+      ansible.builtin.shell: |
+        set -eu
+        export BACKEND_IMAGE="{{ backend_image }}"
+        export FRONTEND_IMAGE="{{ frontend_image }}"
+        docker compose -f "{{ compose_file }}" up -d --force-recreate backend frontend
+      args:
+        chdir: "{{ inspire_install_dir }}"
 
     # Compose interpolates the whole file; BACKEND_IMAGE / FRONTEND_IMAGE must be set for compose commands.
     - name: Check if database service is running
@@ -102,7 +166,7 @@
       tags: [db]
       when: ((deploy_db | default(false) | bool) or ('db' in ansible_run_tags)) and (db_running.stdout | default('') | trim | length == 0)
       ansible.builtin.shell: |
-        set -euo pipefail
+        set -eu
         docker compose -f "{{ compose_file }}" pull db
         docker compose -f "{{ compose_file }}" up -d db
       args:
@@ -115,7 +179,7 @@
       tags: [db]
       when: (deploy_db | default(false) | bool) or ('db' in ansible_run_tags)
       ansible.builtin.shell: |
-        set -euo pipefail
+        set -eu
         docker compose -f "{{ compose_file }}" exec -T db pg_isready -q
       args:
         chdir: "{{ inspire_install_dir }}"
@@ -141,7 +205,7 @@
       tags: [backend]
       when: "'backend' in ansible_run_tags"
       ansible.builtin.shell: |
-        set -euo pipefail
+        set -eu
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull backend
@@ -153,7 +217,7 @@
       tags: [frontend]
       when: "'frontend' in ansible_run_tags"
       ansible.builtin.shell: |
-        set -euo pipefail
+        set -eu
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull frontend
@@ -165,7 +229,7 @@
       tags: [stack]
       when: "'stack' in ansible_run_tags"
       ansible.builtin.shell: |
-        set -euo pipefail
+        set -eu
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull backend frontend
@@ -177,7 +241,7 @@
       tags: [full]
       when: "'all' in ansible_run_tags or 'full' in ansible_run_tags"
       ansible.builtin.shell: |
-        set -euo pipefail
+        set -eu
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull
