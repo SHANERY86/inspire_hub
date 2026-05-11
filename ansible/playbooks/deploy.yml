@@ -1,17 +1,27 @@
 ---
-# Pull backend + frontend images from GHCR and start the stack with Docker Compose.
-# Expects the app directory on the host to already contain .env (not committed).
+# Pull images from GHCR and start services with docker-compose.ghcr.yml on the target.
+# Expects inspire_install_dir with .env (not committed).
 #
-# Required per-host inventory vars: inspire_install_dir, ghcr_owner (lowercase; used in image paths).
-# Optional: image_tag (default latest), ghcr_username (default: ghcr_owner), ghcr_token (for private images).
-# Optional: deploy_db (default false). When true, checks/pulls/starts the Postgres service and waits for
-# pg_isready before the full stack. Use for first boot or when you want DB up before app containers.
-# There is no local Dockerfile for db; "build" here means pull + create/start the db container.
+# Inventory: inspire_install_dir, ghcr_owner. Optional: image_tag, ghcr_username, ghcr_token.
+# Vault: ansible_become_password on host (see inventory/hosts.yml).
 #
-#   ansible-playbook ansible/playbooks/deploy.yml -e deploy_db=true
-#   ansible-playbook ansible/playbooks/deploy.yml -e deploy_db=true -e ghcr_token=ghp_xxx
+# Tags (use --tags; combine with commas e.g. --tags db,stack):
+#   always  — implied with any --tags (shared checks, compose file, optional GHCR login)
+#   db      — Postgres only (pull/start db + wait for pg_isready). Also runs when -e deploy_db=true
+#   backend — backend service only
+#   frontend — frontend service only
+#   stack   — backend + frontend (no db unless you add --tags db or -e deploy_db=true)
+#   full    — entire compose file (db + backend + frontend pull/up). Default when you omit --tags
 #
-# From repo root (ansible.cfg uses inventory/hosts.yml).
+# Examples:
+#   ansible-playbook playbooks/deploy.yml --ask-vault-pass
+#   ansible-playbook playbooks/deploy.yml --tags frontend --ask-vault-pass
+#   ansible-playbook playbooks/deploy.yml --tags stack --ask-vault-pass
+#   ansible-playbook playbooks/deploy.yml --tags db --ask-vault-pass
+#   ansible-playbook playbooks/deploy.yml -e deploy_db=true --ask-vault-pass   # full deploy + db phase
+#   ansible-playbook playbooks/deploy.yml --tags db,stack --ask-vault-pass     # db then app pair
+#
+# From repo: cd ansible && ansible-playbook playbooks/deploy.yml …
 
 - name: Pull GHCR images and start Inspire Hub
   hosts: inspire
@@ -28,6 +38,7 @@
 
   pre_tasks:
     - name: Check required host variables
+      tags: [always]
       ansible.builtin.assert:
         that:
           - inspire_install_dir is defined
@@ -36,33 +47,38 @@
 
   tasks:
     - name: Install directory must exist on target
+      tags: [always]
       ansible.builtin.stat:
         path: "{{ inspire_install_dir }}"
       register: install_dir
       failed_when: not install_dir.stat.exists
 
     - name: .env should exist on target
+      tags: [always]
       ansible.builtin.stat:
         path: "{{ inspire_install_dir }}/.env"
       register: env_file
       failed_when: not env_file.stat.exists
 
     - name: Install GHCR compose file on target
+      tags: [always]
       ansible.builtin.copy:
         src: "{{ inspire_repo_root }}/{{ compose_file }}"
         dest: "{{ inspire_install_dir }}/{{ compose_file }}"
         mode: "0644"
 
     - name: Log in to GitHub Container Registry
+      tags: [always]
       when: ghcr_token | default('') | length > 0
       ansible.builtin.shell: |
         set -euo pipefail
         echo "{{ ghcr_token }}" | docker login {{ ghcr_registry }} -u "{{ ghcr_username }}" --password-stdin
       no_log: true
 
-    # Compose still interpolates the whole file, so backend/frontend image env must be set.
+    # Compose interpolates the whole file; BACKEND_IMAGE / FRONTEND_IMAGE must be set for compose commands.
     - name: Check if database service is running
-      when: deploy_db | default(false) | bool
+      tags: [db]
+      when: (deploy_db | default(false) | bool) or ('db' in ansible_run_tags)
       ansible.builtin.command:
         argv:
           - docker
@@ -83,7 +99,8 @@
       changed_when: false
 
     - name: Pull Postgres image and start database service
-      when: (deploy_db | default(false) | bool) and (db_running.stdout | default('') | trim | length == 0)
+      tags: [db]
+      when: ((deploy_db | default(false) | bool) or ('db' in ansible_run_tags)) and (db_running.stdout | default('') | trim | length == 0)
       ansible.builtin.shell: |
         set -euo pipefail
         docker compose -f "{{ compose_file }}" pull db
@@ -95,7 +112,8 @@
         FRONTEND_IMAGE: "{{ frontend_image }}"
 
     - name: Wait for PostgreSQL to accept connections
-      when: deploy_db | default(false) | bool
+      tags: [db]
+      when: (deploy_db | default(false) | bool) or ('db' in ansible_run_tags)
       ansible.builtin.shell: |
         set -euo pipefail
         docker compose -f "{{ compose_file }}" exec -T db pg_isready -q
@@ -112,13 +130,52 @@
       changed_when: false
 
     - name: Fail if PostgreSQL did not become ready
-      when: deploy_db | default(false) | bool
+      tags: [db]
+      when: (deploy_db | default(false) | bool) or ('db' in ansible_run_tags)
       ansible.builtin.assert:
         that:
           - pg_ready.rc == 0
         fail_msg: "PostgreSQL (service db) did not become ready after 30 attempts."
 
+    - name: Pull and start backend service only
+      tags: [backend]
+      when: "'backend' in ansible_run_tags"
+      ansible.builtin.shell: |
+        set -euo pipefail
+        export BACKEND_IMAGE="{{ backend_image }}"
+        export FRONTEND_IMAGE="{{ frontend_image }}"
+        docker compose -f "{{ compose_file }}" pull backend
+        docker compose -f "{{ compose_file }}" up -d backend
+      args:
+        chdir: "{{ inspire_install_dir }}"
+
+    - name: Pull and start frontend service only
+      tags: [frontend]
+      when: "'frontend' in ansible_run_tags"
+      ansible.builtin.shell: |
+        set -euo pipefail
+        export BACKEND_IMAGE="{{ backend_image }}"
+        export FRONTEND_IMAGE="{{ frontend_image }}"
+        docker compose -f "{{ compose_file }}" pull frontend
+        docker compose -f "{{ compose_file }}" up -d frontend
+      args:
+        chdir: "{{ inspire_install_dir }}"
+
+    - name: Pull and start backend and frontend services
+      tags: [stack]
+      when: "'stack' in ansible_run_tags"
+      ansible.builtin.shell: |
+        set -euo pipefail
+        export BACKEND_IMAGE="{{ backend_image }}"
+        export FRONTEND_IMAGE="{{ frontend_image }}"
+        docker compose -f "{{ compose_file }}" pull backend frontend
+        docker compose -f "{{ compose_file }}" up -d backend frontend
+      args:
+        chdir: "{{ inspire_install_dir }}"
+
     - name: Pull application images and start full stack
+      tags: [full]
+      when: "'all' in ansible_run_tags or 'full' in ansible_run_tags"
       ansible.builtin.shell: |
         set -euo pipefail
         export BACKEND_IMAGE="{{ backend_image }}"
