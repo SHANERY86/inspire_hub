@@ -133,7 +133,9 @@ STORAGES = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        # Use the plain Django staticfiles storage to avoid WhiteNoise's compression
+        # post-processing during `collectstatic` on low-resource hosts.
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
     },
 }
 
