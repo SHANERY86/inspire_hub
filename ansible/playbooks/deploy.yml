@@ -1,0 +1,129 @@
+---
+# Pull backend + frontend images from GHCR and start the stack with Docker Compose.
+# Expects the app directory on the host to already contain .env (not committed).
+#
+# Required per-host inventory vars: inspire_install_dir, ghcr_owner (lowercase; used in image paths).
+# Optional: image_tag (default latest), ghcr_username (default: ghcr_owner), ghcr_token (for private images).
+# Optional: deploy_db (default false). When true, checks/pulls/starts the Postgres service and waits for
+# pg_isready before the full stack. Use for first boot or when you want DB up before app containers.
+# There is no local Dockerfile for db; "build" here means pull + create/start the db container.
+#
+#   ansible-playbook ansible/playbooks/deploy.yml -e deploy_db=true
+#   ansible-playbook ansible/playbooks/deploy.yml -e deploy_db=true -e ghcr_token=ghp_xxx
+#
+# From repo root (ansible.cfg uses inventory/hosts.yml).
+
+- name: Pull GHCR images and start Inspire Hub
+  hosts: inspire
+  become: true
+  gather_facts: false
+  vars:
+    inspire_repo_root: "{{ playbook_dir | dirname | dirname }}"
+    ghcr_registry: ghcr.io
+    image_tag: "{{ image_tag | default('latest') }}"
+    ghcr_username: "{{ ghcr_username | default(ghcr_owner) }}"
+    backend_image: "{{ ghcr_registry }}/{{ ghcr_owner }}/inspire-hub-backend:{{ image_tag }}"
+    frontend_image: "{{ ghcr_registry }}/{{ ghcr_owner }}/inspire-hub-frontend:{{ image_tag }}"
+    compose_file: docker-compose.ghcr.yml
+
+  pre_tasks:
+    - name: Check required host variables
+      ansible.builtin.assert:
+        that:
+          - inspire_install_dir is defined
+          - ghcr_owner is defined
+        fail_msg: "Set inspire_install_dir and ghcr_owner on the host in inventory (see inventory/hosts.yml)."
+
+  tasks:
+    - name: Install directory must exist on target
+      ansible.builtin.stat:
+        path: "{{ inspire_install_dir }}"
+      register: install_dir
+      failed_when: not install_dir.stat.exists
+
+    - name: .env should exist on target
+      ansible.builtin.stat:
+        path: "{{ inspire_install_dir }}/.env"
+      register: env_file
+      failed_when: not env_file.stat.exists
+
+    - name: Install GHCR compose file on target
+      ansible.builtin.copy:
+        src: "{{ inspire_repo_root }}/{{ compose_file }}"
+        dest: "{{ inspire_install_dir }}/{{ compose_file }}"
+        mode: "0644"
+
+    - name: Log in to GitHub Container Registry
+      when: ghcr_token | default('') | length > 0
+      ansible.builtin.shell: |
+        set -euo pipefail
+        echo "{{ ghcr_token }}" | docker login {{ ghcr_registry }} -u "{{ ghcr_username }}" --password-stdin
+      no_log: true
+
+    # Compose still interpolates the whole file, so backend/frontend image env must be set.
+    - name: Check if database service is running
+      when: deploy_db | default(false) | bool
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - -f
+          - "{{ compose_file }}"
+          - ps
+          - --status
+          - running
+          - db
+          - -q
+        chdir: "{{ inspire_install_dir }}"
+      environment:
+        BACKEND_IMAGE: "{{ backend_image }}"
+        FRONTEND_IMAGE: "{{ frontend_image }}"
+      register: db_running
+      failed_when: false
+      changed_when: false
+
+    - name: Pull Postgres image and start database service
+      when: (deploy_db | default(false) | bool) and (db_running.stdout | default('') | trim | length == 0)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker compose -f "{{ compose_file }}" pull db
+        docker compose -f "{{ compose_file }}" up -d db
+      args:
+        chdir: "{{ inspire_install_dir }}"
+      environment:
+        BACKEND_IMAGE: "{{ backend_image }}"
+        FRONTEND_IMAGE: "{{ frontend_image }}"
+
+    - name: Wait for PostgreSQL to accept connections
+      when: deploy_db | default(false) | bool
+      ansible.builtin.shell: |
+        set -euo pipefail
+        docker compose -f "{{ compose_file }}" exec -T db pg_isready -q
+      args:
+        chdir: "{{ inspire_install_dir }}"
+      environment:
+        BACKEND_IMAGE: "{{ backend_image }}"
+        FRONTEND_IMAGE: "{{ frontend_image }}"
+      register: pg_ready
+      until: pg_ready.rc == 0
+      retries: 30
+      delay: 1
+      failed_when: false
+      changed_when: false
+
+    - name: Fail if PostgreSQL did not become ready
+      when: deploy_db | default(false) | bool
+      ansible.builtin.assert:
+        that:
+          - pg_ready.rc == 0
+        fail_msg: "PostgreSQL (service db) did not become ready after 30 attempts."
+
+    - name: Pull application images and start full stack
+      ansible.builtin.shell: |
+        set -euo pipefail
+        export BACKEND_IMAGE="{{ backend_image }}"
+        export FRONTEND_IMAGE="{{ frontend_image }}"
+        docker compose -f "{{ compose_file }}" pull
+        docker compose -f "{{ compose_file }}" up -d
+      args:
+        chdir: "{{ inspire_install_dir }}"

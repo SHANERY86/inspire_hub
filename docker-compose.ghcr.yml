@@ -1,0 +1,51 @@
+# Run pre-built images from GitHub Container Registry (no local build).
+# Set BACKEND_IMAGE and FRONTEND_IMAGE (e.g. from Ansible) or add them to .env.
+# Requires .env in the same directory (DB_*, SECRET_KEY, etc.).
+#
+# Example:
+#   export BACKEND_IMAGE=ghcr.io/youruser/inspire-hub-backend:latest
+#   export FRONTEND_IMAGE=ghcr.io/youruser/inspire-hub-frontend:latest
+#   docker compose -f docker-compose.ghcr.yml pull && docker compose -f docker-compose.ghcr.yml up -d
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    image: ${BACKEND_IMAGE:?Set BACKEND_IMAGE to ghcr.io/<owner>/inspire-hub-backend:<tag>}
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      - db
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set FRONTEND_IMAGE to ghcr.io/<owner>/inspire-hub-frontend:<tag>}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    volumes:
+      - static_data:/srv/static:ro
+      - media_data:/srv/media:ro
+
+volumes:
+  postgres_data:
+  static_data:
+  media_data:
