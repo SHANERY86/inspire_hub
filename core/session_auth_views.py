@@ -3,6 +3,7 @@ import json
 
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -10,10 +11,12 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class SessionCsrfView(View):
-    """GET: set csrftoken cookie so the SPA can POST with X-CSRFToken."""
+    """GET: set csrftoken cookie and return the token for X-CSRFToken (SPA-friendly)."""
 
     def get(self, request):
-        return JsonResponse({'detail': 'ok'})
+        response = JsonResponse({'detail': 'ok', 'csrfToken': get_token(request)})
+        response['Cache-Control'] = 'private, no-store'
+        return response
 
 
 @method_decorator(csrf_protect, name='dispatch')

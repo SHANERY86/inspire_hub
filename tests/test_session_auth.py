@@ -10,6 +10,10 @@ def test_auth_csrf_sets_cookie():
     r = c.get('/api/v1/auth/csrf/')
     assert r.status_code == 200
     assert 'csrftoken' in r.cookies
+    data = r.json()
+    assert data['detail'] == 'ok'
+    assert data['csrfToken']
+    assert 'no-store' in r['Cache-Control']
 
 
 @pytest.mark.django_db

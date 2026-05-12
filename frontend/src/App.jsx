@@ -26,8 +26,11 @@ function getCookie(name) {
   return ''
 }
 
-async function ensureSessionCsrf() {
-  await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+async function fetchSessionCsrf() {
+  const res = await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+  const data = await res.json().catch(() => ({}))
+  const fromBody = typeof data.csrfToken === 'string' ? data.csrfToken : ''
+  return fromBody || getCookie('csrftoken')
 }
 
 function imageDataUrl(base64, filename) {
@@ -99,7 +102,7 @@ function App() {
 
     async function bootstrap() {
       try {
-        await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+        await fetchSessionCsrf()
         if (cancelled) return
         const me = await fetch(apiUrl('/api/v1/auth/me/'), {
           credentials: 'include',
@@ -144,7 +147,7 @@ function App() {
 
     setSubmitting(true)
     try {
-      await ensureSessionCsrf()
+      const csrf = await fetchSessionCsrf()
       const fd = new FormData()
       fd.append('source_title', step1Form.source_title)
       fd.append('essence', step1Form.essence)
@@ -159,7 +162,7 @@ function App() {
         method: 'POST',
         credentials: 'include',
         headers: {
-          'X-CSRFToken': getCookie('csrftoken'),
+          'X-CSRFToken': csrf,
         },
         body: fd,
       })
@@ -218,7 +221,7 @@ function App() {
     setSubmitting(true)
 
     try {
-      await ensureSessionCsrf()
+      const csrf = await fetchSessionCsrf()
       const payload = {
         source_title: draftForm.source_title,
         essence: draftForm.essence,
@@ -238,7 +241,7 @@ function App() {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken'),
+          'X-CSRFToken': csrf,
         },
         body: JSON.stringify(payload),
       })
@@ -268,13 +271,13 @@ function App() {
     setLoginError('')
     setAuthBusy(true)
     try {
-      await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+      const csrf = await fetchSessionCsrf()
       const response = await fetch(apiUrl('/api/v1/auth/login/'), {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken'),
+          'X-CSRFToken': csrf,
         },
         body: JSON.stringify({
           username: loginUsername,
@@ -304,12 +307,12 @@ function App() {
   async function onLogout() {
     setAuthBusy(true)
     try {
-      await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+      const csrf = await fetchSessionCsrf()
       await fetch(apiUrl('/api/v1/auth/logout/'), {
         method: 'POST',
         credentials: 'include',
         headers: {
-          'X-CSRFToken': getCookie('csrftoken'),
+          'X-CSRFToken': csrf,
         },
       })
       setCurrentUser(null)
