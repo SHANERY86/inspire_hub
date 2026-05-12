@@ -31,10 +31,9 @@ CSRF_TRUSTED_ORIGINS = config(
 if config('TRUST_BEHIND_PROXY', default=False, cast=bool):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Public URL prefix when the app is served under e.g. /inspire-hub/ (Apache + Docker).
-# Empty in local dev/tests so URLs stay /admin/, /static/, /api/.
-_force_script = config('FORCE_SCRIPT_NAME', default='').strip()
-FORCE_SCRIPT_NAME = _force_script if _force_script else None
+# Mount URLconf under /<prefix>/ (e.g. inspire-hub) when Apache only proxies that path.
+# Empty for dev/tests at site root. Set URL_PATH_PREFIX in .env (Ansible: inspire_url_path_prefix).
+URL_PATH_PREFIX = config('URL_PATH_PREFIX', default='').strip().strip('/')
 
 
 # Application definition

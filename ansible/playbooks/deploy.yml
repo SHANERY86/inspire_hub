@@ -3,6 +3,8 @@
 # Creates inspire_install_dir on the target if missing, then the rest. If .env is missing, it is created from templates/env.j2
 # (DB_PASSWORD = ansible_become_password). Optional: inspire_db_name, inspire_db_user, inspire_allowed_hosts,
 # inspire_csrf_origins, django_debug.
+# If you change templates/env.j2 (or host vars that feed it), run --tags env (or env,stack) so the Pi's .env updates;
+# --tags stack alone does not overwrite an existing .env.
 # Required when bootstrapping .env: ocr_api_key (vault), django_key (vault) → Django SECRET_KEY.
 #
 # Inventory: inspire_install_dir, ghcr_owner. Optional: image_tag, ghcr_username, ghcr_token.
@@ -91,7 +93,9 @@
         src: env.j2
         dest: "{{ inspire_install_dir }}/.env"
         mode: "0600"
-      no_log: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+      # no_log omitted so template/Jinja errors are visible; .env contains secrets—avoid sharing raw logs.
 
     - name: Refresh .env from template (reconfigure)
       tags: [env, reconfigure]
@@ -105,7 +109,9 @@
         src: env.j2
         dest: "{{ inspire_install_dir }}/.env"
         mode: "0600"
-      no_log: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+      # no_log omitted so template/Jinja errors are visible; .env contains secrets—avoid sharing raw logs.
 
     - name: Install GHCR compose file on target
       tags: [always]
