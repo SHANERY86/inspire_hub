@@ -2,6 +2,37 @@ from django.conf import settings
 from django.db import models
 
 
+class Source(models.Model):
+    """A work the user is reading or tracking (book, article, etc.)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sources',
+    )
+    title = models.CharField(max_length=512)
+    author = models.CharField(max_length=512, blank=True, default='')
+    isbn = models.CharField(max_length=20, blank=True, default='', db_index=True)
+    source_type = models.CharField(max_length=50, default='book')
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'source'
+        ordering = ['-updated_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'isbn'],
+                condition=models.Q(isbn__gt=''),
+                name='source_unique_user_isbn',
+            )
+        ]
+
+    def __str__(self):
+        return self.title
+
+
 class Inspiration(models.Model):
     """Inspiration model for storing insights from various sources"""
     user = models.ForeignKey(

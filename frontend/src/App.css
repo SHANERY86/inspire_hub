@@ -2,10 +2,19 @@
   max-width: 900px;
   margin: 0 auto;
   padding: 2rem;
+  color: #ffffff;
+}
+
+.container h1 {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
 }
 
 .subtitle {
-  color: #666;
+  color: rgba(255, 255, 255, 0.92);
   margin-bottom: 1.5rem;
 }
 
@@ -25,9 +34,18 @@
 .form select,
 .form textarea {
   padding: 0.5rem;
-  border: 1px solid #bbb;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   font: inherit;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.form input:focus-visible,
+.form select:focus-visible,
+.form textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 .form textarea {
@@ -38,11 +56,30 @@
 .form button,
 .actions button {
   width: fit-content;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid #bbb;
-  border-radius: 6px;
-  background: #f6f6f6;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fffdf8;
   cursor: pointer;
+  font-weight: 600;
+}
+
+.form button:hover,
+.actions button:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.form button:not(.secondary):active,
+.actions button:not(.secondary):active {
+  transform: translateY(1px);
+}
+
+.form button:focus-visible,
+.actions button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .actions {
@@ -53,12 +90,20 @@
 }
 
 button.secondary {
-  background: #fff;
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--border);
+  font-weight: 600;
+}
+
+button.secondary:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
 }
 
 .hint {
   margin: 0;
-  color: #666;
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
@@ -70,22 +115,24 @@ button.secondary {
 .preview-shots h3 {
   margin: 0.5rem 0 0;
   font-size: 1rem;
+  color: var(--ink);
 }
 
 .preview-shot {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
   padding: 0.75rem;
   display: grid;
   gap: 0.5rem;
+  background: var(--surface-muted);
 }
 
 .preview-thumb {
   max-width: 100%;
   max-height: 220px;
   object-fit: contain;
-  border-radius: 4px;
-  background: #f4f4f4;
+  border-radius: 6px;
+  background: var(--thumbnail);
 }
 
 .checkbox-row {
@@ -97,11 +144,16 @@ button.secondary {
 
 .checkbox-row input {
   width: auto;
+  accent-color: var(--accent);
 }
 
 .error {
-  color: #b00020;
+  color: #ffffff;
   font-weight: 600;
+}
+
+.card .error {
+  color: var(--error);
 }
 
 .list {
@@ -113,15 +165,18 @@ button.secondary {
 }
 
 .card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 1rem;
-  background: #fff;
+  background: var(--card-cream);
+  color: var(--ink);
+  box-shadow: 0 2px 12px rgba(239, 111, 46, 0.08);
 }
 
 .card h3 {
   margin-top: 0;
   margin-bottom: 0.5rem;
+  color: var(--ink);
 }
 
 .session-bar {
@@ -142,6 +197,7 @@ button.secondary {
 
 .login-card h2 {
   margin-top: 0;
+  color: var(--ink);
 }
 
 .visually-hidden {
@@ -193,11 +249,19 @@ button.secondary {
   user-select: text;
 }
 
+.preview-shot textarea.ocr-textarea-readonly {
+  background: var(--readonly-bg);
+  color: var(--ink);
+  cursor: default;
+  resize: none;
+  border-color: var(--border-soft);
+}
+
 .line-pick-details {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
   padding: 0.25rem 0.5rem 0.5rem;
-  background: #fafafa;
+  background: var(--line-pick-bg);
 }
 
 .line-pick-summary {
@@ -207,6 +271,7 @@ button.secondary {
   min-height: 2.75rem;
   display: flex;
   align-items: center;
+  color: var(--ink);
 }
 
 .line-pick-hint {
@@ -224,19 +289,18 @@ button.secondary {
   list-style: none;
   margin: 0 0 0.5rem;
   padding: 0;
-  /* All rows are rendered; limit height so the page scrolls inside this box on phones. */
   max-height: min(52vh, 22rem);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
-  border: 1px solid #e8e8e8;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--paper);
 }
 
 .line-pick-row {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .line-pick-row:last-child {
@@ -259,6 +323,7 @@ button.secondary {
   min-height: 1.25rem;
   margin-top: 0.15rem;
   flex-shrink: 0;
+  accent-color: var(--accent);
 }
 
 .line-pick-text {
@@ -268,10 +333,55 @@ button.secondary {
 }
 
 .line-pick-empty {
-  color: #888;
+  color: var(--muted);
   font-style: normal;
 }
 
 .line-pick-apply {
   margin-top: 0.25rem;
+}
+
+.sources-section {
+  margin-top: 1.75rem;
+}
+
+.sources-section h2 {
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+  color: var(--ink);
+}
+
+.sources-isbn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sources-list {
+  margin-top: 1rem;
+}
+
+.sources-list-item h3 {
+  margin-top: 0;
+}
+
+.source-cover-preview-wrap {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.source-cover-preview-label {
+  margin: 0 0 0.35rem;
+}
+
+.source-cover-preview-img {
+  display: block;
+  max-width: 160px;
+  max-height: 220px;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  object-fit: contain;
+  background: var(--thumbnail);
 }

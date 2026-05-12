@@ -8,7 +8,55 @@ Explicit per-field declarations are only needed when you override shape or valid
 """
 from rest_framework import serializers
 
-from .models import Inspiration, Screenshot
+from .models import Inspiration, Screenshot, Source
+from .source_isbn import normalize_isbn
+
+
+class SourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Source
+        fields = [
+            'id',
+            'title',
+            'author',
+            'isbn',
+            'source_type',
+            'notes',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_isbn(self, value):
+        n = normalize_isbn(value or '')
+        if not n:
+            return ''
+        if len(n) not in (10, 13):
+            raise serializers.ValidationError(
+                'ISBN must be 10 or 13 digits (ISBN-10 may end with X).'
+            )
+        return n
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return attrs
+        if 'isbn' in attrs:
+            isbn = attrs.get('isbn') or ''
+        elif self.instance:
+            isbn = self.instance.isbn or ''
+        else:
+            isbn = ''
+        if not isbn:
+            return attrs
+        qs = Source.objects.filter(user=request.user, isbn=isbn)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                {'isbn': 'You already have a source with this ISBN.'}
+            )
+        return attrs
 
 
 class InspirationSerializer(serializers.ModelSerializer):

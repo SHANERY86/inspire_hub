@@ -152,19 +152,19 @@ function ExtractedTextPickerPanel({ text, onApply }) {
     [text, trimEdges],
   )
   const [checked, setChecked] = useState(() =>
-    segmentTextForPickerRaw(text).segments.map(() => true),
+    segmentTextForPickerRaw(text).segments.map(() => false),
   )
 
   useEffect(() => {
     setTrimEdges(false)
-    setChecked(segmentTextForPickerRaw(text).segments.map(() => true))
+    setChecked(segmentTextForPickerRaw(text).segments.map(() => false))
   }, [text])
 
   useEffect(() => {
     const segs = (
       trimEdges ? segmentTextForPickerTrimmed(text) : segmentTextForPickerRaw(text)
     ).segments
-    setChecked(segs.map(() => true))
+    setChecked(segs.map(() => false))
   }, [trimEdges])
 
   function toggleRow(i) {
@@ -180,16 +180,18 @@ function ExtractedTextPickerPanel({ text, onApply }) {
   const keptCount = checked.filter(Boolean).length
   const trimLabel = mode === 'lines' ? 'Trim line edges' : 'Trim text edges'
   const fullLabel = mode === 'lines' ? 'Show full lines' : 'Show full text'
+  const lead =
+    'Apply merges checked rows into the read-only extracted text above. '
   const hint =
     mode === 'lines'
-      ? 'Each row is one OCR line. Optional: trim the first and last row at sentence boundaries.'
+      ? `${lead}Each row is one OCR line. Optional: trim the first and last row at sentence boundaries.`
       : mode === 'sentences'
-        ? 'Rows are split by sentences. Optional: trim stray text at the start/end of the block before picking.'
-        : 'One block only — add line breaks above for multiple rows, or use Keep selection only.'
+        ? `${lead}Optional: trim stray text at the start/end of the block before picking rows.`
+        : `${lead}Only one chunk — try Trim text edges to split into sentences, or go back to adjust the image.`
 
   return (
     <details className="line-pick-details">
-      <summary className="line-pick-summary">Pick parts to keep (easier on a phone)</summary>
+      <summary className="line-pick-summary">Pick parts to keep</summary>
       <p className="hint line-pick-hint">
         {hint}
         {segments.length > 5
@@ -240,7 +242,7 @@ function ExtractedTextPickerPanel({ text, onApply }) {
         disabled={keptCount === 0}
         onClick={handleApply}
       >
-        Replace text with checked parts
+        Apply checked parts to extracted text
       </button>
     </details>
   )
@@ -252,6 +254,14 @@ const emptyStep1 = {
   user_thoughts: '',
   source_type: 'book',
   reference: '',
+}
+
+const emptyNewSource = {
+  title: '',
+  author: '',
+  isbn: '',
+  source_type: 'book',
+  notes: '',
 }
 
 function App() {
@@ -274,8 +284,16 @@ function App() {
   const [screenshotFiles, setScreenshotFiles] = useState([])
   const [draftForm, setDraftForm] = useState(null)
   const [draftScreenshots, setDraftScreenshots] = useState([])
-  const screenshotTextareaRefs = useRef({})
   const cameraInputRef = useRef(null)
+  const barcodeIsbnRef = useRef(null)
+
+  const [sources, setSources] = useState([])
+  const [sourcesLoading, setSourcesLoading] = useState(false)
+  const [sourcesError, setSourcesError] = useState('')
+  const [newSource, setNewSource] = useState(emptyNewSource)
+  const [sourceFormBusy, setSourceFormBusy] = useState(false)
+  const [sourceFormMessage, setSourceFormMessage] = useState('')
+  const [isbnCoverPreviewUrl, setIsbnCoverPreviewUrl] = useState('')
 
   const loadInspirations = useCallback(async () => {
     try {
@@ -301,6 +319,37 @@ function App() {
       setLoading(false)
     }
   }, [])
+
+  const loadSources = useCallback(async () => {
+    setSourcesLoading(true)
+    setSourcesError('')
+    try {
+      const response = await fetch(apiUrl('/api/v1/sources/'), {
+        credentials: 'include',
+      })
+      if (response.status === 401 || response.status === 403) {
+        setSources([])
+        return
+      }
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`)
+      }
+      const data = await response.json()
+      setSources(data.results ?? [])
+    } catch (err) {
+      setSourcesError(err instanceof Error ? err.message : 'Request failed')
+    } finally {
+      setSourcesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (currentUser) void loadSources()
+    else {
+      setSources([])
+      setSourcesError('')
+    }
+  }, [currentUser, loadSources])
 
   useEffect(() => {
     let cancelled = false
@@ -414,23 +463,6 @@ function App() {
     )
   }
 
-  function keepExtractedSelectionOnly(index) {
-    const el = screenshotTextareaRefs.current[index]
-    if (!el) return
-    const { selectionStart, selectionEnd, value } = el
-    if (selectionStart === selectionEnd) return
-    const selected = value.slice(selectionStart, selectionEnd)
-    onScreenshotTextChange(index, selected)
-    setTimeout(() => {
-      const node = screenshotTextareaRefs.current[index]
-      if (node) {
-        const len = selected.length
-        node.focus()
-        node.setSelectionRange(len, len)
-      }
-    }, 0)
-  }
-
   function onScreenshotKeepChange(index, keep) {
     setDraftScreenshots((prev) =>
       prev.map((s, i) => (i === index ? { ...s, keep } : s)),
@@ -438,11 +470,146 @@ function App() {
   }
 
   function goBackToStep1() {
-    screenshotTextareaRefs.current = {}
     setStep(1)
     setDraftForm(null)
     setDraftScreenshots([])
     setFormError('')
+  }
+
+  function onNewSourceFieldChange(event) {
+    const { name, value } = event.target
+    if (name === 'isbn') setIsbnCoverPreviewUrl('')
+    setNewSource((prev) => ({ ...prev, [name]: value }))
+  }
+
+  async function lookupIsbnForNewSource() {
+    const q = newSource.isbn.trim()
+    if (!q) {
+      setSourceFormMessage('Enter an ISBN first.')
+      setIsbnCoverPreviewUrl('')
+      return
+    }
+    setSourceFormBusy(true)
+    setSourceFormMessage('')
+    try {
+      const params = new URLSearchParams({ isbn: q })
+      const response = await fetch(
+        apiUrl(`/api/v1/sources/isbn-lookup/?${params.toString()}`),
+        { credentials: 'include' },
+      )
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setIsbnCoverPreviewUrl('')
+        setSourceFormMessage(
+          typeof body.detail === 'string'
+            ? body.detail
+            : `Lookup failed (${response.status}).`,
+        )
+        return
+      }
+      setNewSource((p) => ({
+        ...p,
+        title: body.title || p.title,
+        author:
+          Array.isArray(body.authors) && body.authors.length
+            ? body.authors.join(', ')
+            : p.author,
+      }))
+      setIsbnCoverPreviewUrl(
+        typeof body.cover_url === 'string' ? body.cover_url : '',
+      )
+      setSourceFormMessage('Filled title and author from Open Library.')
+    } finally {
+      setSourceFormBusy(false)
+    }
+  }
+
+  async function onBarcodeIsbnPhoto(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    setSourceFormMessage('')
+    if (!file) return
+    if (!('BarcodeDetector' in window)) {
+      setSourceFormMessage(
+        'Barcode scan from a photo needs BarcodeDetector (Chrome on Android). Enter the ISBN or use Look up ISBN.',
+      )
+      return
+    }
+    setSourceFormBusy(true)
+    try {
+      const detector = new window.BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'],
+      })
+      const bmp = await createImageBitmap(file)
+      const codes = await detector.detect(bmp)
+      const raw = codes.find((c) => c.rawValue)?.rawValue
+      const digits = raw
+        ? String(raw)
+            .replace(/[^0-9X]/gi, '')
+            .replace(/x/g, 'X')
+        : ''
+      if (!digits || digits.length < 10) {
+        setSourceFormMessage(
+          'No usable barcode in that photo. Try more light and a straight-on shot.',
+        )
+        return
+      }
+      setIsbnCoverPreviewUrl('')
+      setNewSource((p) => ({ ...p, isbn: digits }))
+      setSourceFormMessage('ISBN read from photo. Use Look up ISBN to fetch title if needed.')
+    } catch {
+      setSourceFormMessage('Could not read a barcode from that image.')
+    } finally {
+      setSourceFormBusy(false)
+    }
+  }
+
+  async function onAddSourceSubmit(event) {
+    event.preventDefault()
+    if (!newSource.title.trim()) {
+      setSourceFormMessage('Title is required.')
+      return
+    }
+    setSourceFormBusy(true)
+    setSourceFormMessage('')
+    try {
+      const csrf = await fetchSessionCsrf()
+      const response = await fetch(apiUrl('/api/v1/sources/'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf,
+        },
+        body: JSON.stringify({
+          title: newSource.title.trim(),
+          author: newSource.author.trim(),
+          isbn: newSource.isbn.trim(),
+          source_type: newSource.source_type,
+          notes: newSource.notes.trim(),
+        }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        let msg = typeof body.detail === 'string' ? body.detail : ''
+        if (!msg && body && typeof body === 'object') {
+          for (const v of Object.values(body)) {
+            if (Array.isArray(v) && typeof v[0] === 'string') {
+              msg = v[0]
+              break
+            }
+          }
+        }
+        setSourceFormMessage(msg || `Could not save (${response.status}).`)
+        return
+      }
+      setNewSource({ ...emptyNewSource })
+      setIsbnCoverPreviewUrl('')
+      setSourceFormMessage('Source saved.')
+      await loadSources()
+    } finally {
+      setSourceFormBusy(false)
+    }
   }
 
   async function onCommitSubmit(event) {
@@ -618,7 +785,7 @@ function App() {
 
       <h1>Inspire Hub</h1>
       <p className="subtitle">
-        Add inspirations with OCR preview (sessionless API). Step {step} of 2.
+        Add inspirations with OCR preview. Step {step} of 2.
       </p>
 
       <section className="card">
@@ -806,31 +973,19 @@ function App() {
                       Keep this image when saving
                     </label>
                     <label>
-                      Extracted text (edit before save)
+                      Extracted text (from OCR — use list below to set final text)
                       <textarea
-                        className="ocr-textarea"
-                        ref={(el) => {
-                          screenshotTextareaRefs.current[index] = el
-                        }}
+                        className="ocr-textarea ocr-textarea-readonly"
                         value={s.extracted_text ?? ''}
-                        onChange={(e) =>
-                          onScreenshotTextChange(index, e.target.value)
-                        }
+                        readOnly
                         rows={5}
+                        aria-readonly="true"
                       />
                     </label>
                     <ExtractedTextPickerPanel
                       text={s.extracted_text ?? ''}
                       onApply={(next) => onScreenshotTextChange(index, next)}
                     />
-                    <button
-                      type="button"
-                      className="secondary"
-                      title="Highlight the text you want to keep, then click to remove the rest."
-                      onClick={() => keepExtractedSelectionOnly(index)}
-                    >
-                      Keep selection only
-                    </button>
                   </div>
                 ))}
               </div>
@@ -887,6 +1042,143 @@ function App() {
             </li>
           ))}
         </ul>
+      )}
+
+      {currentUser && (
+        <section className="card sources-section">
+          <h2>Your sources</h2>
+            <p className="hint">
+            Track books or other works. <strong>Look up ISBN</strong> fills title,
+            author, and a cover preview from Open Library. <strong>Scan ISBN (photo)</strong>{' '}
+            reads the barcode when your browser supports it (often Chrome on Android).
+          </p>
+          <form className="form sources-form" onSubmit={onAddSourceSubmit}>
+            <input
+              ref={barcodeIsbnRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="visually-hidden"
+              tabIndex={-1}
+              onChange={onBarcodeIsbnPhoto}
+              aria-hidden
+            />
+            <label>
+              Title
+              <input
+                name="title"
+                value={newSource.title}
+                onChange={onNewSourceFieldChange}
+                required
+              />
+            </label>
+            <label>
+              Author
+              <input
+                name="author"
+                value={newSource.author}
+                onChange={onNewSourceFieldChange}
+              />
+            </label>
+            <label>
+              ISBN
+              <input
+                name="isbn"
+                value={newSource.isbn}
+                onChange={onNewSourceFieldChange}
+                inputMode="numeric"
+                autoComplete="off"
+              />
+            </label>
+            <div className="sources-isbn-actions">
+              <button
+                type="button"
+                className="secondary"
+                disabled={sourceFormBusy}
+                onClick={() => barcodeIsbnRef.current?.click()}
+              >
+                Scan ISBN (photo)
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={sourceFormBusy}
+                onClick={() => void lookupIsbnForNewSource()}
+              >
+                Look up ISBN
+              </button>
+            </div>
+            {isbnCoverPreviewUrl && (
+              <div className="source-cover-preview-wrap">
+                <p className="hint source-cover-preview-label">Cover preview</p>
+                <img
+                  src={isbnCoverPreviewUrl}
+                  alt="Book cover preview from Open Library"
+                  className="source-cover-preview-img"
+                  onError={() => setIsbnCoverPreviewUrl('')}
+                />
+              </div>
+            )}
+            <label>
+              Type
+              <select
+                name="source_type"
+                value={newSource.source_type}
+                onChange={onNewSourceFieldChange}
+              >
+                <option value="book">book</option>
+                <option value="article">article</option>
+                <option value="video">video</option>
+                <option value="podcast">podcast</option>
+                <option value="other">other</option>
+              </select>
+            </label>
+            <label>
+              Notes
+              <textarea
+                name="notes"
+                rows={2}
+                value={newSource.notes}
+                onChange={onNewSourceFieldChange}
+              />
+            </label>
+            {sourceFormMessage && (
+              <p className="hint sources-form-message">{sourceFormMessage}</p>
+            )}
+            <button type="submit" disabled={sourceFormBusy}>
+              {sourceFormBusy ? 'Saving…' : 'Add source'}
+            </button>
+          </form>
+
+          {sourcesLoading && <p className="hint">Loading sources…</p>}
+          {sourcesError && <p className="error">{sourcesError}</p>}
+          {!sourcesLoading && !sourcesError && sources.length === 0 && (
+            <p className="hint">No sources saved yet.</p>
+          )}
+          {!sourcesLoading && sources.length > 0 && (
+            <ul className="list sources-list">
+              {sources.map((s) => (
+                <li key={s.id} className="card sources-list-item">
+                  <h3>{s.title}</h3>
+                  {s.author && (
+                    <p>
+                      <strong>Author:</strong> {s.author}
+                    </p>
+                  )}
+                  {s.isbn && (
+                    <p>
+                      <strong>ISBN:</strong> {s.isbn}
+                    </p>
+                  )}
+                  <p>
+                    <strong>Type:</strong> {s.source_type}
+                  </p>
+                  {s.notes && <p>{s.notes}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </main>
   )

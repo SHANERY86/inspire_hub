@@ -2,8 +2,19 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from .filters import ScreenshotFilter
-from .models import Inspiration, Screenshot
-from .serializers import InspirationSerializer, ScreenshotSerializer
+from .models import Inspiration, Screenshot, Source
+from .serializers import InspirationSerializer, ScreenshotSerializer, SourceSerializer
+
+
+class SourceViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SourceSerializer
+
+    def get_queryset(self):
+        return Source.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class InspirationViewSet(viewsets.ModelViewSet):

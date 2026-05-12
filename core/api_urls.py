@@ -11,17 +11,24 @@ from .session_auth_views import (
     SessionLogoutView,
     SessionMeView,
 )
-from .viewsets import InspirationViewSet, ScreenshotViewSet
+from .source_api import SourceISBNLookupAPIView
+from .viewsets import InspirationViewSet, ScreenshotViewSet, SourceViewSet
 
 router = DefaultRouter()
 router.register(r'inspirations', InspirationViewSet, basename='inspiration')
 router.register(r'screenshots', ScreenshotViewSet, basename='screenshot')
+router.register(r'sources', SourceViewSet, basename='source')
 
 urlpatterns = [
     path('auth/csrf/', SessionCsrfView.as_view(), name='auth-csrf'),
     path('auth/login/', SessionLoginView.as_view(), name='auth-login'),
     path('auth/logout/', SessionLogoutView.as_view(), name='auth-logout'),
     path('auth/me/', SessionMeView.as_view(), name='auth-me'),
+    path(
+        'sources/isbn-lookup/',
+        SourceISBNLookupAPIView.as_view(),
+        name='source-isbn-lookup',
+    ),
     path(
         'inspiration-drafts/preview/',
         InspirationDraftPreviewAPIView.as_view(),
