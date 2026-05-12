@@ -31,6 +31,11 @@ CSRF_TRUSTED_ORIGINS = config(
 if config('TRUST_BEHIND_PROXY', default=False, cast=bool):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# Public URL prefix when the app is served under e.g. /inspire-hub/ (Apache + Docker).
+# Empty in local dev/tests so URLs stay /admin/, /static/, /api/.
+_force_script = config('FORCE_SCRIPT_NAME', default='').strip()
+FORCE_SCRIPT_NAME = _force_script if _force_script else None
+
 
 # Application definition
 
@@ -131,7 +136,7 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = '/static/'
+STATIC_URL = config('STATIC_URL', default='/static/')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
     'default': {
@@ -145,7 +150,7 @@ STORAGES = {
 }
 
 # Media files (User uploads)
-MEDIA_URL = '/media/'
+MEDIA_URL = config('MEDIA_URL', default='/media/')
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
