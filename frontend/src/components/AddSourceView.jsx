@@ -25,7 +25,9 @@ export function AddSourceView({
       <p className="hint">
         Track books or other works. <strong>Look up ISBN</strong> fills title,
         author, and a cover preview from Open Library. <strong>Scan ISBN (photo)</strong>{' '}
-        reads the barcode when your browser supports it (often Chrome on Android).
+        uses your browser’s barcode API when available (often Chrome or Edge on
+        HTTPS). Bookmark <strong>#add-source</strong> on the same Inspire Hub URL as
+        Home so this screen stays in the full app.
       </p>
       <form className="form sources-form" onSubmit={onAddSourceSubmit}>
         <input

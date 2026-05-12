@@ -5,6 +5,7 @@ import { AddSourceView } from './components/AddSourceView.jsx'
 import { HamburgerNav } from './components/HamburgerNav.jsx'
 import { HomeView } from './components/HomeView.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
+import { parseViewFromLocation, syncHashToView } from './lib/viewHash.js'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 const APP_BASE = import.meta.env.BASE_URL ?? '/'
@@ -66,7 +67,7 @@ function App() {
   const [loginError, setLoginError] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
 
-  const [activeView, setActiveView] = useState(/** @type {AppView} */ ('home'))
+  const [activeView, setActiveView] = useState(() => parseViewFromLocation())
   const [navOpen, setNavOpen] = useState(false)
 
   const [inspirations, setInspirations] = useState([])
@@ -90,6 +91,18 @@ function App() {
   const [sourceFormBusy, setSourceFormBusy] = useState(false)
   const [sourceFormMessage, setSourceFormMessage] = useState('')
   const [isbnCoverPreviewUrl, setIsbnCoverPreviewUrl] = useState('')
+
+  useEffect(() => {
+    const onHashChange = () => {
+      setActiveView(parseViewFromLocation())
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  useEffect(() => {
+    syncHashToView(activeView)
+  }, [activeView])
 
   const loadInspirations = useCallback(async () => {
     try {
@@ -365,8 +378,12 @@ function App() {
     setSourceFormMessage('')
     if (!file) return
     if (!('BarcodeDetector' in window)) {
+      const secure =
+        typeof window !== 'undefined' && window.isSecureContext === true
       setSourceFormMessage(
-        'Barcode scan from a photo needs BarcodeDetector (Chrome on Android). Enter the ISBN or use Look up ISBN.',
+        secure
+          ? 'Barcode scan needs a Chromium-based browser (Chrome or Edge). Safari and some in-app browsers do not expose BarcodeDetector. Open Add source from the main Inspire Hub site (same tab/window as Home), or bookmark …/inspire-hub/#add-source so you load the full app. You can always type the ISBN and use Look up ISBN.'
+          : 'Barcode scan only works on a secure page (HTTPS, or localhost). Open the app with https:// (not plain http:// to a LAN address), then try again—or enter the ISBN and use Look up ISBN.',
       )
       return
     }
