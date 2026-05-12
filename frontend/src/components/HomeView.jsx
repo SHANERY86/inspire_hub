@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  SPOTLIGHT_ARROW_POST_FADE_MS,
   SPOTLIGHT_FADE_MS,
   SPOTLIGHT_FONTS,
   SPOTLIGHT_ROTATE_MS,
@@ -35,10 +36,91 @@ export function HomeView({
   const [displayIdx, setDisplayIdx] = useState(0)
   const [fontIdx, setFontIdx] = useState(0)
   const [visible, setVisible] = useState(true)
+  const [fadeInArrows, setFadeInArrows] = useState(false)
+  const [hoverQuote, setHoverQuote] = useState(false)
+  const [touchReveal, setTouchReveal] = useState(false)
+  const [touchUi, setTouchUi] = useState(false)
 
   const randomInitRef = useRef(false)
   const intervalRef = useRef(null)
   const timeoutRef = useRef(null)
+  const prevVisibleRef = useRef(true)
+  const fadeInArrowsTimerRef = useRef(null)
+  const touchHideTimerRef = useRef(null)
+
+  useEffect(() => {
+    const mql = window.matchMedia('(hover: none), (pointer: coarse)')
+    const sync = () => setTouchUi(mql.matches)
+    sync()
+    mql.addEventListener('change', sync)
+    return () => mql.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    if (fadeInArrowsTimerRef.current != null) {
+      window.clearTimeout(fadeInArrowsTimerRef.current)
+      fadeInArrowsTimerRef.current = null
+    }
+    if (prevVisibleRef.current === false && visible === true) {
+      setFadeInArrows(true)
+      fadeInArrowsTimerRef.current = window.setTimeout(() => {
+        setFadeInArrows(false)
+        fadeInArrowsTimerRef.current = null
+      }, SPOTLIGHT_ARROW_POST_FADE_MS)
+    }
+    if (!visible) {
+      setFadeInArrows(false)
+    }
+    prevVisibleRef.current = visible
+    return () => {
+      if (fadeInArrowsTimerRef.current != null) {
+        window.clearTimeout(fadeInArrowsTimerRef.current)
+        fadeInArrowsTimerRef.current = null
+      }
+    }
+  }, [visible])
+
+  const clearTouchHideTimer = useCallback(() => {
+    if (touchHideTimerRef.current != null) {
+      window.clearTimeout(touchHideTimerRef.current)
+      touchHideTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleTouchHide = useCallback(() => {
+    clearTouchHideTimer()
+    touchHideTimerRef.current = window.setTimeout(() => {
+      setTouchReveal(false)
+      touchHideTimerRef.current = null
+    }, 4200)
+  }, [clearTouchHideTimer])
+
+  useEffect(() => {
+    setTouchReveal(false)
+    clearTouchHideTimer()
+  }, [captureIds, clearTouchHideTimer])
+
+  useEffect(
+    () => () => {
+      clearTouchHideTimer()
+      if (fadeInArrowsTimerRef.current != null) {
+        window.clearTimeout(fadeInArrowsTimerRef.current)
+        fadeInArrowsTimerRef.current = null
+      }
+    },
+    [clearTouchHideTimer],
+  )
+
+  const onQuotePointerDown = useCallback(() => {
+    if (!touchUi) return
+    clearTouchHideTimer()
+    setTouchReveal(true)
+  }, [clearTouchHideTimer, touchUi])
+
+  const onQuotePointerUp = useCallback(() => {
+    if (!touchUi) return
+    scheduleTouchHide()
+  }, [scheduleTouchHide, touchUi])
 
   const clearTimers = useCallback(() => {
     if (intervalRef.current != null) {
@@ -175,42 +257,88 @@ export function HomeView({
   const captured = (active.quote || '').trim()
   const fontStack = SPOTLIGHT_FONTS[fontIdx % SPOTLIGHT_FONTS.length].stack
 
+  const srcTitle = (active.source_display_title ?? '').trim()
+  const srcAuthor = (active.source_display_author ?? '').trim()
+
   const fadeStyle = {
     opacity: visible ? 1 : 0,
     transition: `opacity ${SPOTLIGHT_FADE_MS}ms ease`,
   }
 
+  const multi = captures.length > 1
+  const showArrows =
+    multi && (fadeInArrows || hoverQuote || touchReveal)
+
+  const quoteBody = (
+    <div className="home-spotlight-capture-wrap" style={fadeStyle}>
+      <p
+        className="home-spotlight-capture"
+        lang="en"
+        style={{ fontFamily: fontStack }}
+      >
+        {captured}
+      </p>
+      {(srcTitle || srcAuthor) && (
+        <p className="home-spotlight-attribution" lang="en">
+          {srcTitle ? (
+            <span className="home-spotlight-attribution-title">{srcTitle}</span>
+          ) : null}
+          {srcTitle && srcAuthor ? (
+            <span className="home-spotlight-attribution-sep" aria-hidden="true">
+              {' '}
+              ·{' '}
+            </span>
+          ) : null}
+          {srcAuthor ? (
+            <span className="home-spotlight-attribution-author">{srcAuthor}</span>
+          ) : null}
+        </p>
+      )}
+    </div>
+  )
+
   return (
     <section className="home-spotlight-hero" aria-label="Captured text">
-      <div className="home-spotlight-carousel">
-        {captures.length > 1 && (
-          <button
-            type="button"
-            className="home-spotlight-arrow"
-            aria-label="Previous inspiration"
-            onClick={() => navigateBy(-1)}
+      <div
+        className={
+          multi ? 'home-spotlight-carousel home-spotlight-carousel--multi' : 'home-spotlight-carousel'
+        }
+      >
+        {multi ? (
+          <div
+            className={
+              showArrows
+                ? 'home-spotlight-quote-zone home-spotlight-quote-zone--arrows-on'
+                : 'home-spotlight-quote-zone'
+            }
+            onMouseEnter={() => setHoverQuote(true)}
+            onMouseLeave={() => setHoverQuote(false)}
+            onPointerDown={onQuotePointerDown}
+            onPointerUp={onQuotePointerUp}
+            onPointerCancel={onQuotePointerUp}
           >
-            ←
-          </button>
-        )}
-        <div className="home-spotlight-capture-wrap" style={fadeStyle}>
-          <p
-            className="home-spotlight-capture"
-            lang="en"
-            style={{ fontFamily: fontStack }}
-          >
-            {captured}
-          </p>
-        </div>
-        {captures.length > 1 && (
-          <button
-            type="button"
-            className="home-spotlight-arrow"
-            aria-label="Next inspiration"
-            onClick={() => navigateBy(1)}
-          >
-            →
-          </button>
+            <button
+              type="button"
+              className="home-spotlight-arrow home-spotlight-arrow--prev"
+              aria-label="Previous inspiration"
+              tabIndex={0}
+              onClick={() => navigateBy(-1)}
+            >
+              ←
+            </button>
+            {quoteBody}
+            <button
+              type="button"
+              className="home-spotlight-arrow home-spotlight-arrow--next"
+              aria-label="Next inspiration"
+              tabIndex={0}
+              onClick={() => navigateBy(1)}
+            >
+              →
+            </button>
+          </div>
+        ) : (
+          quoteBody
         )}
       </div>
     </section>

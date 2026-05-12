@@ -39,6 +39,9 @@ wheels/
 *.db
 *.sqlite3
 
+# Pytest-only media root (see inspire_hub.settings_test)
+.pytest_media/
+
 # Docker
 docker-compose.override.yml
 

@@ -22,7 +22,11 @@ class InspirationViewSet(viewsets.ModelViewSet):
     serializer_class = InspirationSerializer
 
     def get_queryset(self):
-        return Inspiration.objects.filter(user=self.request.user).order_by('-date')
+        return (
+            Inspiration.objects.filter(user=self.request.user)
+            .select_related('source')
+            .order_by('-date')
+        )
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

@@ -45,6 +45,29 @@ class TestInspirationCRUD:
         assert r2.data['source_title'] == 'Test Book'
         assert r2.data['essence'] == 'A memorable line'
         assert r2.data.get('source') is None
+        assert r2.data.get('source_display_title') == ''
+        assert r2.data.get('source_display_author') == ''
+
+    def test_retrieve_linked_source_display_fields(self, authenticated_api_client, api_user):
+        src = Source.objects.create(
+            user=api_user,
+            title='Shelf work',
+            author='Author Name',
+            source_type='book',
+        )
+        payload = {
+            'source_title': 'Any',
+            'essence': 'Line',
+            'quote': 'q',
+            'user_thoughts': '',
+            'source_type': 'book',
+            'reference': '',
+            'source': src.pk,
+        }
+        r = authenticated_api_client.post('/api/v1/inspirations/', payload, format='json')
+        assert r.status_code == status.HTTP_201_CREATED
+        assert r.data['source_display_title'] == 'Shelf work'
+        assert r.data['source_display_author'] == 'Author Name'
 
     def test_create_with_linked_source(self, authenticated_api_client, api_user):
         src = Source.objects.create(

@@ -642,11 +642,11 @@ function App() {
         </section>
       )}
 
-      <p className="subtitle">
-        {activeView === 'addInspiration'
-          ? `Add inspirations with OCR preview. Step ${step} of 2.`
-          : 'Your library — one spark at a time.'}
-      </p>
+      {activeView === 'addInspiration' && (
+        <p className="subtitle">
+          {`Add inspirations with OCR preview. Step ${step} of 2.`}
+        </p>
+      )}
 
       {activeView === 'home' && (
         <HomeView

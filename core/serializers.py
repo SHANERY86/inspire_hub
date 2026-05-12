@@ -65,6 +65,8 @@ class InspirationSerializer(serializers.ModelSerializer):
         required=False,
         queryset=Source.objects.none(),
     )
+    source_display_title = serializers.SerializerMethodField()
+    source_display_author = serializers.SerializerMethodField()
 
     class Meta:
         model = Inspiration
@@ -73,6 +75,8 @@ class InspirationSerializer(serializers.ModelSerializer):
             'user',
             'source',
             'source_title',
+            'source_display_title',
+            'source_display_author',
             'essence',
             'date',
             'quote',
@@ -80,7 +84,13 @@ class InspirationSerializer(serializers.ModelSerializer):
             'source_type',
             'reference',
         ]
-        read_only_fields = ['id', 'user', 'date']
+        read_only_fields = [
+            'id',
+            'user',
+            'date',
+            'source_display_title',
+            'source_display_author',
+        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -89,6 +99,18 @@ class InspirationSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             q = Source.objects.filter(user=request.user)
         self.fields['source'].queryset = q
+
+    def get_source_display_title(self, obj):
+        src = getattr(obj, 'source', None)
+        if src is None:
+            return ''
+        return (src.title or '').strip()
+
+    def get_source_display_author(self, obj):
+        src = getattr(obj, 'source', None)
+        if src is None:
+            return ''
+        return (src.author or '').strip()
 
 
 class ScreenshotSerializer(serializers.ModelSerializer):

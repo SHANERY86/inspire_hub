@@ -15,3 +15,5 @@ export const SPOTLIGHT_FONTS = [
 
 export const SPOTLIGHT_ROTATE_MS = 20_000
 export const SPOTLIGHT_FADE_MS = 1400
+/** How long prev/next arrows stay visible after a quote finishes fading in. */
+export const SPOTLIGHT_ARROW_POST_FADE_MS = 5_000
