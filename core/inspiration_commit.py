@@ -8,7 +8,9 @@ from django.db import transaction
 from .models import Inspiration, Screenshot
 
 
-def commit_inspiration_with_screenshots(form_data, screenshot_rows, on_warning=None):
+def commit_inspiration_with_screenshots(
+    form_data, screenshot_rows, *, user, on_warning=None
+):
     """
     Create an Inspiration and optional Screenshot rows.
 
@@ -18,6 +20,8 @@ def commit_inspiration_with_screenshots(form_data, screenshot_rows, on_warning=N
 
     Quote is built from every row whose extracted_text is non-empty (matches template flow).
     Screenshot files are saved only when keep is true, text is non-empty, and image decodes.
+
+    user: owner of the new Inspiration (required).
 
     on_warning: optional callable(idx: int, message: str) for skipped screenshots (1-based idx in messages).
     """
@@ -40,6 +44,7 @@ def commit_inspiration_with_screenshots(form_data, screenshot_rows, on_warning=N
 
     with transaction.atomic():
         inspiration = Inspiration.objects.create(
+            user=user,
             source_title=form_data['source_title'].strip(),
             essence=form_data['essence'].strip(),
             quote=quote,

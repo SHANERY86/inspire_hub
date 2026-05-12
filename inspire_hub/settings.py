@@ -3,7 +3,9 @@ Django settings for inspire_hub project.
 """
 
 from pathlib import Path
+
 from decouple import config
+from django.urls import reverse_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,11 +22,24 @@ ALLOWED_HOSTS = config(
     default='localhost,127.0.0.1',
     cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
 )
-CSRF_TRUSTED_ORIGINS = config(
-    'CSRF_TRUSTED_ORIGINS',
-    default='http://127.0.0.1:5173,http://localhost:5173',
-    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
-)
+
+
+def _comma_separated_list(raw: str):
+    return [s.strip() for s in raw.split(',') if s.strip()]
+
+
+_csrf_from_env = _comma_separated_list(config('CSRF_TRUSTED_ORIGINS', default=''))
+# Local Vite + Django runserver: merge safe defaults so .env does not need every dev URL.
+_local_csrf_origins = [
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+]
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(_local_csrf_origins + _csrf_from_env))
+else:
+    CSRF_TRUSTED_ORIGINS = _csrf_from_env
 
 # When TLS terminates at a reverse proxy, nginx should forward X-Forwarded-Proto.
 # Only enable in deployments where clients cannot reach Gunicorn directly with a spoofed header.
@@ -35,6 +50,16 @@ if config('TRUST_BEHIND_PROXY', default=False, cast=bool):
 # Empty for dev/tests at site root. Set URL_PATH_PREFIX in .env (Ansible: inspire_url_path_prefix).
 URL_PATH_PREFIX = config('URL_PATH_PREFIX', default='').strip().strip('/')
 
+# Session/CSRF cookies scoped to the app path when mounted under a prefix (e.g. /inspire-hub/).
+# Skip while DEBUG so local Vite (requests to /api/...) still receives cookies if URL_PATH_PREFIX is set.
+if URL_PATH_PREFIX and not DEBUG:
+    _cookie_path = f'/{URL_PATH_PREFIX}/'
+    SESSION_COOKIE_PATH = _cookie_path
+    CSRF_COOKIE_PATH = _cookie_path
+
+LOGIN_URL = 'core:home'
+LOGIN_REDIRECT_URL = reverse_lazy('core:home')
+LOGOUT_REDIRECT_URL = reverse_lazy('core:home')
 
 # Application definition
 

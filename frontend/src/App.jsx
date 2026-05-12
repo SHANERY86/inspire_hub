@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -26,6 +26,10 @@ function getCookie(name) {
   return ''
 }
 
+async function ensureSessionCsrf() {
+  await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+}
+
 function imageDataUrl(base64, filename) {
   const lower = (filename || '').toLowerCase()
   const mime = lower.endsWith('.png')
@@ -45,9 +49,18 @@ const emptyStep1 = {
 }
 
 function App() {
+  const [authLoading, setAuthLoading] = useState(true)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [loginUsername, setLoginUsername] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+
   const [inspirations, setInspirations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [listAuthRequired, setListAuthRequired] = useState(false)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(1)
@@ -56,27 +69,60 @@ function App() {
   const [draftForm, setDraftForm] = useState(null)
   const [draftScreenshots, setDraftScreenshots] = useState([])
 
+  const loadInspirations = useCallback(async () => {
+    try {
+      setLoading(true)
+      setListAuthRequired(false)
+      const response = await fetch(apiUrl('/api/v1/inspirations/'), {
+        credentials: 'include',
+      })
+      if (response.status === 401 || response.status === 403) {
+        setInspirations([])
+        setListAuthRequired(true)
+        setError('')
+        return
+      }
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`)
+      }
+      const data = await response.json()
+      setInspirations(data.results ?? [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Request failed')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    async function loadInspirations() {
+    let cancelled = false
+
+    async function bootstrap() {
       try {
-        setLoading(true)
-        const response = await fetch(apiUrl('/api/v1/inspirations/'), {
+        await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+        if (cancelled) return
+        const me = await fetch(apiUrl('/api/v1/auth/me/'), {
           credentials: 'include',
         })
-        if (!response.ok) {
-          throw new Error(`API returned ${response.status}`)
+        if (cancelled) return
+        if (me.ok) {
+          setCurrentUser(await me.json())
+        } else {
+          setCurrentUser(null)
         }
-        const data = await response.json()
-        setInspirations(data.results ?? [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Request failed')
+      } catch {
+        if (!cancelled) setCurrentUser(null)
       } finally {
-        setLoading(false)
+        if (!cancelled) setAuthLoading(false)
       }
+      if (!cancelled) await loadInspirations()
     }
 
-    loadInspirations()
-  }, [])
+    bootstrap()
+    return () => {
+      cancelled = true
+    }
+  }, [loadInspirations])
 
   function onStep1Change(event) {
     const { name, value } = event.target
@@ -98,6 +144,7 @@ function App() {
 
     setSubmitting(true)
     try {
+      await ensureSessionCsrf()
       const fd = new FormData()
       fd.append('source_title', step1Form.source_title)
       fd.append('essence', step1Form.essence)
@@ -171,6 +218,7 @@ function App() {
     setSubmitting(true)
 
     try {
+      await ensureSessionCsrf()
       const payload = {
         source_title: draftForm.source_title,
         essence: draftForm.essence,
@@ -215,8 +263,126 @@ function App() {
     }
   }
 
+  async function onLoginSubmit(event) {
+    event.preventDefault()
+    setLoginError('')
+    setAuthBusy(true)
+    try {
+      await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+      const response = await fetch(apiUrl('/api/v1/auth/login/'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+          username: loginUsername,
+          password: loginPassword,
+        }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const detail =
+          typeof body.detail === 'string'
+            ? body.detail
+            : response.status === 403
+              ? 'Request blocked (often CSRF). Reload and try again.'
+              : `Sign-in failed (HTTP ${response.status}). For local dev, run Django on 127.0.0.1:8000 and restart Vite after proxy changes.`
+        setLoginError(detail)
+        return
+      }
+      setCurrentUser({ id: body.id, username: body.username })
+      setLoginPassword('')
+      setShowLoginForm(false)
+      await loadInspirations()
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function onLogout() {
+    setAuthBusy(true)
+    try {
+      await fetch(apiUrl('/api/v1/auth/csrf/'), { credentials: 'include' })
+      await fetch(apiUrl('/api/v1/auth/logout/'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+      })
+      setCurrentUser(null)
+      await loadInspirations()
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
   return (
     <main className="container">
+      <header className="session-bar">
+        {authLoading ? (
+          <p className="hint">Checking session…</p>
+        ) : currentUser ? (
+          <p className="session-info">
+            Signed in as <strong>{currentUser.username}</strong>{' '}
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => onLogout()}
+              disabled={authBusy}
+            >
+              Log out
+            </button>
+          </p>
+        ) : (
+          <p className="session-info">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setShowLoginForm((v) => !v)
+                setLoginError('')
+              }}
+            >
+              {showLoginForm ? 'Cancel' : 'Sign in'}
+            </button>
+          </p>
+        )}
+      </header>
+
+      {!authLoading && !currentUser && showLoginForm && (
+        <section className="card login-card">
+          <h2>Sign in</h2>
+          <form className="form" onSubmit={onLoginSubmit}>
+            <label>
+              Username
+              <input
+                autoComplete="username"
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                required
+              />
+            </label>
+            {loginError && <p className="error">{loginError}</p>}
+            <button type="submit" disabled={authBusy}>
+              {authBusy ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+        </section>
+      )}
+
       <h1>Inspire Hub</h1>
       <p className="subtitle">
         Add inspirations with OCR preview (sessionless API). Step {step} of 2.
@@ -416,11 +582,24 @@ function App() {
       {loading && <p>Loading inspirations...</p>}
       {error && <p className="error">Error: {error}</p>}
 
-      {!loading && !error && inspirations.length === 0 && (
+      {!loading && listAuthRequired && (
+        <p className="hint">
+          Log in to load your inspirations list.{' '}
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setShowLoginForm(true)}
+          >
+            Sign in
+          </button>
+        </p>
+      )}
+
+      {!loading && !error && !listAuthRequired && inspirations.length === 0 && (
         <p>No inspirations yet.</p>
       )}
 
-      {!loading && !error && inspirations.length > 0 && (
+      {!loading && !error && !listAuthRequired && inspirations.length > 0 && (
         <ul className="list">
           {inspirations.map((item) => (
             <li key={item.id} className="card">

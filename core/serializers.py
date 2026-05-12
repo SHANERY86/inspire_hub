@@ -16,6 +16,7 @@ class InspirationSerializer(serializers.ModelSerializer):
         model = Inspiration
         fields = [
             'id',
+            'user',
             'source_title',
             'essence',
             'date',
@@ -24,7 +25,7 @@ class InspirationSerializer(serializers.ModelSerializer):
             'source_type',
             'reference',
         ]
-        read_only_fields = ['id', 'date']
+        read_only_fields = ['id', 'user', 'date']
 
 
 class ScreenshotSerializer(serializers.ModelSerializer):
@@ -39,6 +40,15 @@ class ScreenshotSerializer(serializers.ModelSerializer):
             'uploaded_at',
         ]
         read_only_fields = ['id', 'uploaded_at']
+
+    def validate_inspiration(self, inspiration):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if inspiration.user_id != request.user.id:
+                raise serializers.ValidationError(
+                    'Invalid inspiration id or not permitted.'
+                )
+        return inspiration
 
 
 class ScreenshotDraftItemSerializer(serializers.Serializer):

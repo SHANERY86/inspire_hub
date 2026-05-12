@@ -1,4 +1,4 @@
-"""API for OCR preview + commit without server-side session (React / SPA)."""
+"""Inspiration REST helpers: multipart OCR preview, then JSON commit (SPA two-step flow)."""
 from django.db import DatabaseError
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -8,14 +8,14 @@ from rest_framework.views import APIView
 
 from .inspiration_commit import commit_inspiration_with_screenshots
 from .ocr_service import extract_text_from_upload, uploaded_file_to_base64
+from .preview_payload import preview_session_valid
 from .serializers import InspirationDraftCommitSerializer
-from .views import _preview_session_valid
 
 
 class InspirationDraftPreviewAPIView(APIView):
     """
-    POST multipart: same fields as add_inspiration — form fields + screenshots[] files.
-    Returns JSON { form_data, screenshots } for client-side preview (no session).
+    POST multipart: same fields as the step-1 inspiration form — form fields + screenshots[] files.
+    Returns JSON { form_data, screenshots } for client-side preview (no server-side session payload).
     """
 
     permission_classes = [IsAuthenticated]
@@ -62,7 +62,7 @@ class InspirationDraftPreviewAPIView(APIView):
 class InspirationDraftCommitAPIView(APIView):
     """
     POST JSON: edited form_data + screenshots with keep / extracted_text / image_base64.
-    Validates required inspiration fields; saves like preview_inspiration POST.
+    Validates required inspiration fields, then persists via commit_inspiration_with_screenshots.
     """
 
     permission_classes = [IsAuthenticated]
@@ -83,7 +83,7 @@ class InspirationDraftCommitAPIView(APIView):
         }
         screenshot_list = payload.get('screenshots') or []
 
-        if not _preview_session_valid(form_data, screenshot_list):
+        if not preview_session_valid(form_data, screenshot_list):
             return Response(
                 {
                     'detail': 'Incomplete form data. source_title, essence, and source_type are required.',
@@ -103,7 +103,10 @@ class InspirationDraftCommitAPIView(APIView):
 
         try:
             inspiration = commit_inspiration_with_screenshots(
-                form_data, screenshot_rows, on_warning=None
+                form_data,
+                screenshot_rows,
+                user=request.user,
+                on_warning=None,
             )
         except DatabaseError:
             return Response(
@@ -114,6 +117,7 @@ class InspirationDraftCommitAPIView(APIView):
         return Response(
             {
                 'id': inspiration.id,
+                'user': inspiration.user_id,
                 'source_title': inspiration.source_title,
                 'essence': inspiration.essence,
                 'date': inspiration.date,

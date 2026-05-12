@@ -1,8 +1,14 @@
+from django.conf import settings
 from django.db import models
 
 
 class Inspiration(models.Model):
     """Inspiration model for storing insights from various sources"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='inspirations',
+    )
     source_title = models.CharField(max_length=255)
     essence = models.CharField(max_length=255)
     date = models.DateTimeField(auto_now_add=True)

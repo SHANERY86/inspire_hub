@@ -17,13 +17,17 @@ def _tiny_jpeg_upload(name='test.jpg'):
 
 @pytest.mark.django_db
 class TestInspirationCRUD:
-    def test_list_empty(self, api_client):
+    def test_list_requires_auth(self, api_client):
         r = api_client.get('/api/v1/inspirations/')
+        assert r.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_list_empty(self, authenticated_api_client):
+        r = authenticated_api_client.get('/api/v1/inspirations/')
         assert r.status_code == status.HTTP_200_OK
         assert r.data['count'] == 0
         assert r.data['results'] == []
 
-    def test_create_and_retrieve(self, api_client, authenticated_api_client):
+    def test_create_and_retrieve(self, authenticated_api_client):
         payload = {
             'source_title': 'Test Book',
             'essence': 'A memorable line',
@@ -36,13 +40,14 @@ class TestInspirationCRUD:
         assert r.status_code == status.HTTP_201_CREATED
         pk = r.data['id']
 
-        r2 = api_client.get(f'/api/v1/inspirations/{pk}/')
+        r2 = authenticated_api_client.get(f'/api/v1/inspirations/{pk}/')
         assert r2.status_code == status.HTTP_200_OK
         assert r2.data['source_title'] == 'Test Book'
         assert r2.data['essence'] == 'A memorable line'
 
-    def test_patch_and_delete(self, authenticated_api_client):
+    def test_patch_and_delete(self, authenticated_api_client, api_user):
         ins = Inspiration.objects.create(
+            user=api_user,
             source_title='Old',
             essence='Old essence',
             source_type='book',
@@ -75,11 +80,25 @@ class TestInspirationCRUD:
         )
         assert r.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_other_user_cannot_access_inspiration(self, authenticated_api_client, django_user_model):
+        other = django_user_model.objects.create_user(
+            username='other', password='pw'
+        )
+        ins = Inspiration.objects.create(
+            user=other,
+            source_title='Private',
+            essence='X',
+            source_type='book',
+        )
+        r = authenticated_api_client.get(f'/api/v1/inspirations/{ins.pk}/')
+        assert r.status_code == status.HTTP_404_NOT_FOUND
+
 
 @pytest.mark.django_db
 class TestScreenshotCRUD:
-    def test_create_requires_image_and_inspiration(self, authenticated_api_client):
+    def test_create_requires_image_and_inspiration(self, authenticated_api_client, api_user):
         ins = Inspiration.objects.create(
+            user=api_user,
             source_title='S',
             essence='E',
             source_type='book',
@@ -93,8 +112,9 @@ class TestScreenshotCRUD:
         assert r.status_code == status.HTTP_201_CREATED
         assert Screenshot.objects.filter(inspiration=ins).count() == 1
 
-    def test_create_missing_image_returns_400(self, authenticated_api_client):
+    def test_create_missing_image_returns_400(self, authenticated_api_client, api_user):
         ins = Inspiration.objects.create(
+            user=api_user,
             source_title='S',
             essence='E',
             source_type='book',
@@ -114,13 +134,32 @@ class TestScreenshotCRUD:
         )
         assert r.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_list_filtered_by_inspiration_query(self, api_client, authenticated_api_client):
+    def test_create_screenshot_on_other_users_inspiration_returns_400(
+        self, authenticated_api_client, django_user_model, api_user
+    ):
+        other = django_user_model.objects.create_user(username='owner2', password='pw')
         ins = Inspiration.objects.create(
+            user=other,
+            source_title='S',
+            essence='E',
+            source_type='book',
+        )
+        r = authenticated_api_client.post(
+            '/api/v1/screenshots/',
+            {'inspiration': ins.pk, 'image': _tiny_jpeg_upload()},
+            format='multipart',
+        )
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_list_filtered_by_inspiration_query(self, authenticated_api_client, api_user):
+        ins = Inspiration.objects.create(
+            user=api_user,
             source_title='S',
             essence='E',
             source_type='book',
         )
         other = Inspiration.objects.create(
+            user=api_user,
             source_title='Other',
             essence='O',
             source_type='book',
@@ -135,26 +174,27 @@ class TestScreenshotCRUD:
             {'inspiration': other.pk, 'image': _tiny_jpeg_upload('b.jpg')},
             format='multipart',
         )
-        r = api_client.get('/api/v1/screenshots/', {'inspiration': ins.pk})
+        r = authenticated_api_client.get('/api/v1/screenshots/', {'inspiration': ins.pk})
         assert r.status_code == status.HTTP_200_OK
         assert r.data['count'] == 1
         assert r.data['results'][0]['inspiration'] == ins.pk
 
-    def test_list_with_invalid_inspiration_filter_returns_400(self, api_client):
-        r = api_client.get('/api/v1/screenshots/', {'inspiration': 'not-a-number'})
+    def test_list_with_invalid_inspiration_filter_returns_400(self, authenticated_api_client):
+        r = authenticated_api_client.get('/api/v1/screenshots/', {'inspiration': 'not-a-number'})
         assert r.status_code == status.HTTP_400_BAD_REQUEST
         assert 'inspiration' in r.data
 
-    def test_invalid_screenshot_returns_404(self, api_client):
-        r = api_client.get('/api/v1/screenshots/9999999/')
+    def test_invalid_screenshot_returns_404(self, authenticated_api_client):
+        r = authenticated_api_client.get('/api/v1/screenshots/9999999/')
         assert r.status_code == status.HTTP_404_NOT_FOUND
 
     def test_invalid_screenshot_deletion_returns_404(self, authenticated_api_client):
         r = authenticated_api_client.delete('/api/v1/screenshots/99999/')
         assert r.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_retrieve_and_delete(self, api_client, authenticated_api_client):
+    def test_retrieve_and_delete(self, authenticated_api_client, api_user):
         ins = Inspiration.objects.create(
+            user=api_user,
             source_title='S',
             essence='E',
             source_type='book',
@@ -167,7 +207,7 @@ class TestScreenshotCRUD:
         assert create.status_code == status.HTTP_201_CREATED
         pk = create.data['id']
 
-        r = api_client.get(f'/api/v1/screenshots/{pk}/')
+        r = authenticated_api_client.get(f'/api/v1/screenshots/{pk}/')
         assert r.status_code == status.HTTP_200_OK
         assert r.data['inspiration'] == ins.pk
 
