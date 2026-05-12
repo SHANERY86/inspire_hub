@@ -26,6 +26,11 @@ CSRF_TRUSTED_ORIGINS = config(
     cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
 )
 
+# When TLS terminates at a reverse proxy, nginx should forward X-Forwarded-Proto.
+# Only enable in deployments where clients cannot reach Gunicorn directly with a spoofed header.
+if config('TRUST_BEHIND_PROXY', default=False, cast=bool):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # Application definition
 
