@@ -258,6 +258,8 @@ button.secondary:hover {
 }
 
 .line-pick-details {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   padding: 0.25rem 0.5rem 0.5rem;
@@ -550,6 +552,51 @@ button.secondary:hover {
 
 .view-panel {
   margin-top: 0;
+}
+
+/* Add inspiration only: keep controls inside the card on narrow viewports */
+.add-inspiration-view {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.add-inspiration-view .form label {
+  min-width: 0;
+}
+
+.add-inspiration-view .form label > input:not([type='checkbox']):not([type='radio']),
+.add-inspiration-view .form label > select,
+.add-inspiration-view .form label > textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.add-inspiration-view .form textarea {
+  overflow-wrap: anywhere;
+}
+
+.add-inspiration-view .preview-shots {
+  min-width: 0;
+}
+
+.add-inspiration-view .preview-shot {
+  min-width: 0;
+}
+
+.add-inspiration-view .file-picker-label {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.add-inspiration-view .line-pick-details {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.add-inspiration-view .line-pick-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* —— Home: captured OCR text on orange (display only) —— */
