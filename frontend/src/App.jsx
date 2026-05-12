@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -71,6 +71,8 @@ function App() {
   const [screenshotFiles, setScreenshotFiles] = useState([])
   const [draftForm, setDraftForm] = useState(null)
   const [draftScreenshots, setDraftScreenshots] = useState([])
+  const screenshotTextareaRefs = useRef({})
+  const cameraInputRef = useRef(null)
 
   const loadInspirations = useCallback(async () => {
     try {
@@ -132,8 +134,15 @@ function App() {
     setStep1Form((prev) => ({ ...prev, [name]: value }))
   }
 
-  function onFilesChange(event) {
+  function onGalleryFilesChange(event) {
     setScreenshotFiles(Array.from(event.target.files ?? []))
+  }
+
+  function onCameraCaptureChange(event) {
+    const added = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (!added.length) return
+    setScreenshotFiles((prev) => [...prev, ...added])
   }
 
   async function onPreviewSubmit(event) {
@@ -202,6 +211,23 @@ function App() {
     )
   }
 
+  function keepExtractedSelectionOnly(index) {
+    const el = screenshotTextareaRefs.current[index]
+    if (!el) return
+    const { selectionStart, selectionEnd, value } = el
+    if (selectionStart === selectionEnd) return
+    const selected = value.slice(selectionStart, selectionEnd)
+    onScreenshotTextChange(index, selected)
+    setTimeout(() => {
+      const node = screenshotTextareaRefs.current[index]
+      if (node) {
+        const len = selected.length
+        node.focus()
+        node.setSelectionRange(len, len)
+      }
+    }, 0)
+  }
+
   function onScreenshotKeepChange(index, keep) {
     setDraftScreenshots((prev) =>
       prev.map((s, i) => (i === index ? { ...s, keep } : s)),
@@ -209,6 +235,7 @@ function App() {
   }
 
   function goBackToStep1() {
+    screenshotTextareaRefs.current = {}
     setStep(1)
     setDraftForm(null)
     setDraftScreenshots([])
@@ -448,15 +475,42 @@ function App() {
               />
             </label>
 
-            <label>
-              Screenshots (optional if you added thoughts)
+            <div className="screenshot-block" role="group" aria-label="Screenshots">
+              <p className="screenshot-block-label">
+                Screenshots (optional if you added thoughts)
+              </p>
               <input
+                ref={cameraInputRef}
                 type="file"
                 accept="image/*"
-                multiple
-                onChange={onFilesChange}
+                capture="environment"
+                className="visually-hidden"
+                tabIndex={-1}
+                onChange={onCameraCaptureChange}
+                aria-hidden
               />
-            </label>
+              <div className="screenshot-actions">
+                <button
+                  type="button"
+                  className="secondary camera-btn"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  Take photo
+                </button>
+                <label className="file-picker-label">
+                  Choose from library
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={onGalleryFilesChange}
+                  />
+                </label>
+              </div>
+              <p className="hint">
+                Take photo adds each shot. Library picker replaces the current list.
+              </p>
+            </div>
             {screenshotFiles.length > 0 && (
               <p className="hint">{screenshotFiles.length} file(s) selected</p>
             )}
@@ -551,6 +605,9 @@ function App() {
                     <label>
                       Extracted text (edit before save)
                       <textarea
+                        ref={(el) => {
+                          screenshotTextareaRefs.current[index] = el
+                        }}
                         value={s.extracted_text ?? ''}
                         onChange={(e) =>
                           onScreenshotTextChange(index, e.target.value)
@@ -558,6 +615,14 @@ function App() {
                         rows={4}
                       />
                     </label>
+                    <button
+                      type="button"
+                      className="secondary"
+                      title="Highlight the text you want to keep, then click to remove the rest."
+                      onClick={() => keepExtractedSelectionOnly(index)}
+                    >
+                      Keep selection only
+                    </button>
                   </div>
                 ))}
               </div>
