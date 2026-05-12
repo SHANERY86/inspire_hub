@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -41,6 +41,209 @@ function imageDataUrl(base64, filename) {
       ? 'image/webp'
       : 'image/jpeg'
   return `data:${mime};base64,${base64}`
+}
+
+/** Heuristic: fragment begins a new sentence (OCR-friendly). */
+function looksLikeSentenceStart(fragment) {
+  const t = fragment.trimStart()
+  if (!t) return false
+  return /^[A-Z0-9"'"'(]/.test(t)
+}
+
+/** Drop a leading half-sentence: start at first clear sentence boundary inside the line. */
+function trimToSentenceStart(s) {
+  if (!s) return s
+  const leading = s.match(/^\s*/)[0].length
+  const rest = s.slice(leading)
+  if (looksLikeSentenceStart(rest)) return s.slice(leading)
+
+  const re = /[.!?]\s+/g
+  let m
+  while ((m = re.exec(s)) !== null) {
+    const idx = m.index + m[0].length
+    const from = s.slice(idx)
+    const trimFrom = from.search(/\S/)
+    if (trimFrom === -1) continue
+    if (looksLikeSentenceStart(from.slice(trimFrom))) return s.slice(idx + trimFrom)
+  }
+  return s
+}
+
+/** Drop a trailing half-sentence: end after the last full stop / ? / ! that closes a sentence. */
+function trimToSentenceEnd(s) {
+  if (!s) return s
+  const t = s.replace(/\s+$/, '')
+  if (/[.!?]\s*$/.test(t)) return t
+
+  let lastPunct = -1
+  const re = /[.!?]\s+/g
+  let m
+  while ((m = re.exec(t)) !== null) {
+    lastPunct = m.index
+  }
+  if (lastPunct >= 0) return t.slice(0, lastPunct + 1).trimEnd()
+  return s
+}
+
+function trimLineSegmentsForPicker(lines) {
+  if (lines.length <= 1) return lines
+  const out = lines.slice()
+  const first = trimToSentenceStart(out[0])
+  out[0] = first.length ? first : out[0]
+  const li = out.length - 1
+  const last = trimToSentenceEnd(out[li])
+  out[li] = last.length ? last : out[li]
+  return out
+}
+
+function segmentTextForPickerRaw(text) {
+  const t = text ?? ''
+  if (!t) return { mode: 'lines', segments: [''] }
+  const lines = t.split('\n')
+  if (lines.length > 1) {
+    return { mode: 'lines', segments: lines }
+  }
+  const one = lines[0]
+  const sentences = one
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (sentences.length > 1) {
+    return { mode: 'sentences', segments: sentences }
+  }
+  return { mode: 'single', segments: [one] }
+}
+
+/** Same as raw, but clips first/last OCR line (and blob edges before sentence split) at sentence boundaries. */
+function segmentTextForPickerTrimmed(text) {
+  const t = text ?? ''
+  if (!t) return { mode: 'lines', segments: [''] }
+  const lines = t.split('\n')
+  if (lines.length > 1) {
+    return { mode: 'lines', segments: trimLineSegmentsForPicker(lines) }
+  }
+  let one = lines[0]
+  const trimmedBlob = trimToSentenceEnd(trimToSentenceStart(one))
+  if (trimmedBlob.length) one = trimmedBlob
+  const sentences = one
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (sentences.length > 1) {
+    return { mode: 'sentences', segments: sentences }
+  }
+  return { mode: 'single', segments: [one] }
+}
+
+function joinSegments(mode, segments) {
+  if (!segments.length) return ''
+  if (mode === 'lines') return segments.join('\n')
+  if (mode === 'sentences') return segments.join(' ')
+  return segments[0] ?? ''
+}
+
+function ExtractedTextPickerPanel({ text, onApply }) {
+  const [trimEdges, setTrimEdges] = useState(false)
+  const { mode, segments } = useMemo(
+    () =>
+      trimEdges
+        ? segmentTextForPickerTrimmed(text)
+        : segmentTextForPickerRaw(text),
+    [text, trimEdges],
+  )
+  const [checked, setChecked] = useState(() =>
+    segmentTextForPickerRaw(text).segments.map(() => true),
+  )
+
+  useEffect(() => {
+    setTrimEdges(false)
+    setChecked(segmentTextForPickerRaw(text).segments.map(() => true))
+  }, [text])
+
+  useEffect(() => {
+    const segs = (
+      trimEdges ? segmentTextForPickerTrimmed(text) : segmentTextForPickerRaw(text)
+    ).segments
+    setChecked(segs.map(() => true))
+  }, [trimEdges])
+
+  function toggleRow(i) {
+    setChecked((prev) => prev.map((v, j) => (j === i ? !v : v)))
+  }
+
+  function handleApply() {
+    const kept = segments.filter((_, i) => checked[i])
+    if (!kept.length) return
+    onApply(joinSegments(mode, kept))
+  }
+
+  const keptCount = checked.filter(Boolean).length
+  const trimLabel = mode === 'lines' ? 'Trim line edges' : 'Trim text edges'
+  const fullLabel = mode === 'lines' ? 'Show full lines' : 'Show full text'
+  const hint =
+    mode === 'lines'
+      ? 'Each row is one OCR line. Optional: trim the first and last row at sentence boundaries.'
+      : mode === 'sentences'
+        ? 'Rows are split by sentences. Optional: trim stray text at the start/end of the block before picking.'
+        : 'One block only — add line breaks above for multiple rows, or use Keep selection only.'
+
+  return (
+    <details className="line-pick-details">
+      <summary className="line-pick-summary">Pick parts to keep (easier on a phone)</summary>
+      <p className="hint line-pick-hint">
+        {hint}
+        {segments.length > 5
+          ? ' Scroll inside the list below to see every row.'
+          : ''}
+      </p>
+      <div className="line-pick-trim-actions">
+        <button
+          type="button"
+          className="secondary"
+          disabled={trimEdges}
+          onClick={() => setTrimEdges(true)}
+        >
+          {trimLabel}
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          disabled={!trimEdges}
+          onClick={() => setTrimEdges(false)}
+        >
+          {fullLabel}
+        </button>
+      </div>
+      <ul className="line-pick-list" aria-label="Text chunks to include or exclude">
+        {segments.map((seg, i) => (
+          <li key={i} className="line-pick-row">
+            <label className="line-pick-label">
+              <input
+                type="checkbox"
+                checked={checked[i] ?? false}
+                onChange={() => toggleRow(i)}
+              />
+              <span className="line-pick-text">
+                {seg === '' ? (
+                  <em className="line-pick-empty">(blank line)</em>
+                ) : (
+                  seg
+                )}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="secondary line-pick-apply"
+        disabled={keptCount === 0}
+        onClick={handleApply}
+      >
+        Replace text with checked parts
+      </button>
+    </details>
+  )
 }
 
 const emptyStep1 = {
@@ -605,6 +808,7 @@ function App() {
                     <label>
                       Extracted text (edit before save)
                       <textarea
+                        className="ocr-textarea"
                         ref={(el) => {
                           screenshotTextareaRefs.current[index] = el
                         }}
@@ -612,9 +816,13 @@ function App() {
                         onChange={(e) =>
                           onScreenshotTextChange(index, e.target.value)
                         }
-                        rows={4}
+                        rows={5}
                       />
                     </label>
+                    <ExtractedTextPickerPanel
+                      text={s.extracted_text ?? ''}
+                      onApply={(next) => onScreenshotTextChange(index, next)}
+                    />
                     <button
                       type="button"
                       className="secondary"

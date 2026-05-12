@@ -185,3 +185,93 @@ button.secondary {
   font-weight: 600;
   width: fit-content;
 }
+
+.preview-shot textarea.ocr-textarea {
+  font-size: 1rem;
+  line-height: 1.45;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.line-pick-details {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.25rem 0.5rem 0.5rem;
+  background: #fafafa;
+}
+
+.line-pick-summary {
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 0.25rem;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.line-pick-hint {
+  margin: 0 0 0.5rem;
+}
+
+.line-pick-trim-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.line-pick-list {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  /* All rows are rendered; limit height so the page scrolls inside this box on phones. */
+  max-height: min(52vh, 22rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.line-pick-row {
+  border-bottom: 1px solid #eee;
+}
+
+.line-pick-row:last-child {
+  border-bottom: none;
+}
+
+.line-pick-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.5rem 0.25rem;
+  min-height: 2.75rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.line-pick-label input {
+  width: auto;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.line-pick-text {
+  word-break: break-word;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.line-pick-empty {
+  color: #888;
+  font-style: normal;
+}
+
+.line-pick-apply {
+  margin-top: 0.25rem;
+}
