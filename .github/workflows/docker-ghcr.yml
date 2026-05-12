@@ -1,5 +1,4 @@
-# Build container images and push to GitHub Container Registry (GHCR).
-# Images are built for linux/arm/v7 (Raspberry Pi 32-bit) by default.
+# Run Django/pytest on every push and PR; build and push GHCR images only from main/master.
 #
 # Pi pulls: ghcr.io/<owner>/inspire-hub-backend:<tag> and inspire-hub-frontend:<tag>
 #
@@ -7,15 +6,15 @@
 # for the frontend (Node/Vite). If a job times out, use a self-hosted ARM runner
 # or build on the Pi and push from there instead.
 
-name: Docker images to GHCR
+name: CI and Docker images to GHCR
 
 on:
   push:
-    branches: [main, master]
+  pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: docker-ghcr-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -24,7 +23,34 @@ env:
   PLATFORMS: linux/arm/v7
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
   build-and-push:
+    needs: test
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:
