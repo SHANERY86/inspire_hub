@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 from rest_framework import status
 
-from core.models import Inspiration, Screenshot
+from core.models import Inspiration, Screenshot, Source
 
 
 def _tiny_jpeg_upload(name='test.jpg'):
@@ -44,6 +44,42 @@ class TestInspirationCRUD:
         assert r2.status_code == status.HTTP_200_OK
         assert r2.data['source_title'] == 'Test Book'
         assert r2.data['essence'] == 'A memorable line'
+        assert r2.data.get('source') is None
+
+    def test_create_with_linked_source(self, authenticated_api_client, api_user):
+        src = Source.objects.create(
+            user=api_user,
+            title='Saved work',
+            source_type='book',
+        )
+        payload = {
+            'source_title': 'Display title',
+            'essence': 'Line',
+            'quote': '',
+            'user_thoughts': '',
+            'source_type': 'book',
+            'reference': '',
+            'source': src.pk,
+        }
+        r = authenticated_api_client.post('/api/v1/inspirations/', payload, format='json')
+        assert r.status_code == status.HTTP_201_CREATED
+        assert r.data['source'] == src.pk
+        ins = Inspiration.objects.get(pk=r.data['id'])
+        assert ins.source_id == src.pk
+
+    def test_create_with_other_users_source_returns_400(
+        self, authenticated_api_client, api_user, django_user_model
+    ):
+        other = django_user_model.objects.create_user(username='src_owner', password='pw')
+        src = Source.objects.create(user=other, title='Theirs', source_type='book')
+        payload = {
+            'source_title': 'T',
+            'essence': 'E',
+            'source_type': 'book',
+            'source': src.pk,
+        }
+        r = authenticated_api_client.post('/api/v1/inspirations/', payload, format='json')
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_patch_and_delete(self, authenticated_api_client, api_user):
         ins = Inspiration.objects.create(
@@ -214,3 +250,51 @@ class TestScreenshotCRUD:
         r2 = authenticated_api_client.delete(f'/api/v1/screenshots/{pk}/')
         assert r2.status_code == status.HTTP_204_NO_CONTENT
         assert not Screenshot.objects.filter(pk=pk).exists()
+
+
+@pytest.mark.django_db
+class TestInspirationDraftCommit:
+    def test_commit_links_optional_source(self, authenticated_api_client, api_user):
+        src = Source.objects.create(
+            user=api_user,
+            title='On shelf',
+            source_type='book',
+        )
+        payload = {
+            'source_title': 'Shown title',
+            'essence': 'Essence',
+            'user_thoughts': 'A thought',
+            'source_type': 'book',
+            'reference': '',
+            'source': src.pk,
+            'screenshots': [],
+        }
+        r = authenticated_api_client.post(
+            '/api/v1/inspiration-drafts/commit/',
+            payload,
+            format='json',
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        assert r.data['source'] == src.pk
+        assert Inspiration.objects.get(pk=r.data['id']).source_id == src.pk
+
+    def test_commit_rejects_other_users_source(
+        self, authenticated_api_client, django_user_model
+    ):
+        other = django_user_model.objects.create_user(username='o2', password='pw')
+        src = Source.objects.create(user=other, title='Foreign', source_type='book')
+        payload = {
+            'source_title': 'T',
+            'essence': 'E',
+            'user_thoughts': 'x',
+            'source_type': 'book',
+            'reference': '',
+            'source': src.pk,
+            'screenshots': [],
+        }
+        r = authenticated_api_client.post(
+            '/api/v1/inspiration-drafts/commit/',
+            payload,
+            format='json',
+        )
+        assert r.status_code == status.HTTP_400_BAD_REQUEST

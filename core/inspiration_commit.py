@@ -9,7 +9,7 @@ from .models import Inspiration, Screenshot
 
 
 def commit_inspiration_with_screenshots(
-    form_data, screenshot_rows, *, user, on_warning=None
+    form_data, screenshot_rows, *, user, source=None, on_warning=None
 ):
     """
     Create an Inspiration and optional Screenshot rows.
@@ -22,6 +22,8 @@ def commit_inspiration_with_screenshots(
     Screenshot files are saved only when keep is true, text is non-empty, and image decodes.
 
     user: owner of the new Inspiration (required).
+
+    source: optional linked Source instance (same user; validated by caller).
 
     on_warning: optional callable(idx: int, message: str) for skipped screenshots (1-based idx in messages).
     """
@@ -51,6 +53,7 @@ def commit_inspiration_with_screenshots(
             user_thoughts=user_thoughts if user_thoughts else None,
             source_type=form_data['source_type'].strip(),
             reference=reference,
+            source=source,
         )
 
         for idx, row in enumerate(screenshot_rows):

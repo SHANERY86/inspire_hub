@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
+import { AddInspirationView } from './components/AddInspirationView.jsx'
+import { AddSourceView } from './components/AddSourceView.jsx'
+import { HamburgerNav } from './components/HamburgerNav.jsx'
+import { HomeView } from './components/HomeView.jsx'
+import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 const APP_BASE = import.meta.env.BASE_URL ?? '/'
@@ -33,227 +38,13 @@ async function fetchSessionCsrf() {
   return fromBody || getCookie('csrftoken')
 }
 
-function imageDataUrl(base64, filename) {
-  const lower = (filename || '').toLowerCase()
-  const mime = lower.endsWith('.png')
-    ? 'image/png'
-    : lower.endsWith('.webp')
-      ? 'image/webp'
-      : 'image/jpeg'
-  return `data:${mime};base64,${base64}`
-}
-
-/** Heuristic: fragment begins a new sentence (OCR-friendly). */
-function looksLikeSentenceStart(fragment) {
-  const t = fragment.trimStart()
-  if (!t) return false
-  return /^[A-Z0-9"'"'(]/.test(t)
-}
-
-/** Drop a leading half-sentence: start at first clear sentence boundary inside the line. */
-function trimToSentenceStart(s) {
-  if (!s) return s
-  const leading = s.match(/^\s*/)[0].length
-  const rest = s.slice(leading)
-  if (looksLikeSentenceStart(rest)) return s.slice(leading)
-
-  const re = /[.!?]\s+/g
-  let m
-  while ((m = re.exec(s)) !== null) {
-    const idx = m.index + m[0].length
-    const from = s.slice(idx)
-    const trimFrom = from.search(/\S/)
-    if (trimFrom === -1) continue
-    if (looksLikeSentenceStart(from.slice(trimFrom))) return s.slice(idx + trimFrom)
-  }
-  return s
-}
-
-/** Drop a trailing half-sentence: end after the last full stop / ? / ! that closes a sentence. */
-function trimToSentenceEnd(s) {
-  if (!s) return s
-  const t = s.replace(/\s+$/, '')
-  if (/[.!?]\s*$/.test(t)) return t
-
-  let lastPunct = -1
-  const re = /[.!?]\s+/g
-  let m
-  while ((m = re.exec(t)) !== null) {
-    lastPunct = m.index
-  }
-  if (lastPunct >= 0) return t.slice(0, lastPunct + 1).trimEnd()
-  return s
-}
-
-function trimLineSegmentsForPicker(lines) {
-  if (lines.length <= 1) return lines
-  const out = lines.slice()
-  const first = trimToSentenceStart(out[0])
-  out[0] = first.length ? first : out[0]
-  const li = out.length - 1
-  const last = trimToSentenceEnd(out[li])
-  out[li] = last.length ? last : out[li]
-  return out
-}
-
-function segmentTextForPickerRaw(text) {
-  const t = text ?? ''
-  if (!t) return { mode: 'lines', segments: [''] }
-  const lines = t.split('\n')
-  if (lines.length > 1) {
-    return { mode: 'lines', segments: lines }
-  }
-  const one = lines[0]
-  const sentences = one
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (sentences.length > 1) {
-    return { mode: 'sentences', segments: sentences }
-  }
-  return { mode: 'single', segments: [one] }
-}
-
-/** Same as raw, but clips first/last OCR line (and blob edges before sentence split) at sentence boundaries. */
-function segmentTextForPickerTrimmed(text) {
-  const t = text ?? ''
-  if (!t) return { mode: 'lines', segments: [''] }
-  const lines = t.split('\n')
-  if (lines.length > 1) {
-    return { mode: 'lines', segments: trimLineSegmentsForPicker(lines) }
-  }
-  let one = lines[0]
-  const trimmedBlob = trimToSentenceEnd(trimToSentenceStart(one))
-  if (trimmedBlob.length) one = trimmedBlob
-  const sentences = one
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (sentences.length > 1) {
-    return { mode: 'sentences', segments: sentences }
-  }
-  return { mode: 'single', segments: [one] }
-}
-
-function joinSegments(mode, segments) {
-  if (!segments.length) return ''
-  if (mode === 'lines') return segments.join('\n')
-  if (mode === 'sentences') return segments.join(' ')
-  return segments[0] ?? ''
-}
-
-function ExtractedTextPickerPanel({ text, onApply }) {
-  const [trimEdges, setTrimEdges] = useState(false)
-  const { mode, segments } = useMemo(
-    () =>
-      trimEdges
-        ? segmentTextForPickerTrimmed(text)
-        : segmentTextForPickerRaw(text),
-    [text, trimEdges],
-  )
-  const [checked, setChecked] = useState(() =>
-    segmentTextForPickerRaw(text).segments.map(() => false),
-  )
-
-  useEffect(() => {
-    setTrimEdges(false)
-    setChecked(segmentTextForPickerRaw(text).segments.map(() => false))
-  }, [text])
-
-  useEffect(() => {
-    const segs = (
-      trimEdges ? segmentTextForPickerTrimmed(text) : segmentTextForPickerRaw(text)
-    ).segments
-    setChecked(segs.map(() => false))
-  }, [trimEdges])
-
-  function toggleRow(i) {
-    setChecked((prev) => prev.map((v, j) => (j === i ? !v : v)))
-  }
-
-  function handleApply() {
-    const kept = segments.filter((_, i) => checked[i])
-    if (!kept.length) return
-    onApply(joinSegments(mode, kept))
-  }
-
-  const keptCount = checked.filter(Boolean).length
-  const trimLabel = mode === 'lines' ? 'Trim line edges' : 'Trim text edges'
-  const fullLabel = mode === 'lines' ? 'Show full lines' : 'Show full text'
-  const lead =
-    'Apply merges checked rows into the read-only extracted text above. '
-  const hint =
-    mode === 'lines'
-      ? `${lead}Each row is one OCR line. Optional: trim the first and last row at sentence boundaries.`
-      : mode === 'sentences'
-        ? `${lead}Optional: trim stray text at the start/end of the block before picking rows.`
-        : `${lead}Only one chunk — try Trim text edges to split into sentences, or go back to adjust the image.`
-
-  return (
-    <details className="line-pick-details">
-      <summary className="line-pick-summary">Pick parts to keep</summary>
-      <p className="hint line-pick-hint">
-        {hint}
-        {segments.length > 5
-          ? ' Scroll inside the list below to see every row.'
-          : ''}
-      </p>
-      <div className="line-pick-trim-actions">
-        <button
-          type="button"
-          className="secondary"
-          disabled={trimEdges}
-          onClick={() => setTrimEdges(true)}
-        >
-          {trimLabel}
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={!trimEdges}
-          onClick={() => setTrimEdges(false)}
-        >
-          {fullLabel}
-        </button>
-      </div>
-      <ul className="line-pick-list" aria-label="Text chunks to include or exclude">
-        {segments.map((seg, i) => (
-          <li key={i} className="line-pick-row">
-            <label className="line-pick-label">
-              <input
-                type="checkbox"
-                checked={checked[i] ?? false}
-                onChange={() => toggleRow(i)}
-              />
-              <span className="line-pick-text">
-                {seg === '' ? (
-                  <em className="line-pick-empty">(blank line)</em>
-                ) : (
-                  seg
-                )}
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        className="secondary line-pick-apply"
-        disabled={keptCount === 0}
-        onClick={handleApply}
-      >
-        Apply checked parts to extracted text
-      </button>
-    </details>
-  )
-}
-
 const emptyStep1 = {
   source_title: '',
   essence: '',
   user_thoughts: '',
   source_type: 'book',
   reference: '',
+  source: null,
 }
 
 const emptyNewSource = {
@@ -264,6 +55,8 @@ const emptyNewSource = {
   notes: '',
 }
 
+/** @typedef {'home' | 'addInspiration' | 'sourcesGallery' | 'addSource'} AppView */
+
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState(null)
@@ -272,6 +65,9 @@ function App() {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
+
+  const [activeView, setActiveView] = useState(/** @type {AppView} */ ('home'))
+  const [navOpen, setNavOpen] = useState(false)
 
   const [inspirations, setInspirations] = useState([])
   const [loading, setLoading] = useState(true)
@@ -381,8 +177,28 @@ function App() {
     }
   }, [loadInspirations])
 
+  function goHome() {
+    setActiveView('home')
+    setNavOpen(false)
+  }
+
   function onStep1Change(event) {
     const { name, value } = event.target
+    if (name === 'source') {
+      const newSourceId = value === '' ? null : Number(value)
+      setStep1Form((prev) => {
+        if (newSourceId == null) {
+          return { ...prev, source: null }
+        }
+        const src = sources.find((s) => s.id === newSourceId)
+        return {
+          ...prev,
+          source: newSourceId,
+          source_title: src ? src.title : prev.source_title,
+        }
+      })
+      return
+    }
     setStep1Form((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -415,6 +231,9 @@ function App() {
       fd.append('user_thoughts', step1Form.user_thoughts)
       fd.append('source_type', step1Form.source_type)
       fd.append('reference', step1Form.reference)
+      if (step1Form.source != null) {
+        fd.append('source', String(step1Form.source))
+      }
       for (const file of screenshotFiles) {
         fd.append('screenshots', file)
       }
@@ -454,6 +273,22 @@ function App() {
 
   function onDraftFormChange(event) {
     const { name, value } = event.target
+    if (name === 'source') {
+      const newSourceId = value === '' ? null : Number(value)
+      setDraftForm((prev) => {
+        if (!prev) return prev
+        if (newSourceId == null) {
+          return { ...prev, source: null }
+        }
+        const src = sources.find((s) => s.id === newSourceId)
+        return {
+          ...prev,
+          source: newSourceId,
+          source_title: src ? src.title : prev.source_title,
+        }
+      })
+      return
+    }
     setDraftForm((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -625,6 +460,7 @@ function App() {
         user_thoughts: draftForm.user_thoughts ?? '',
         source_type: draftForm.source_type,
         reference: draftForm.reference ?? '',
+        source: draftForm.source ?? null,
         screenshots: draftScreenshots.map((s) => ({
           keep: s.keep,
           image_base64: s.image_base64,
@@ -656,6 +492,8 @@ function App() {
       setStep1Form(emptyStep1)
       setScreenshotFiles([])
       goBackToStep1()
+      setActiveView('home')
+      setNavOpen(false)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Commit request failed')
     } finally {
@@ -719,38 +557,46 @@ function App() {
     }
   }
 
+  function onNavSelect(view) {
+    setActiveView(view)
+    setNavOpen(false)
+  }
+
   return (
-    <main className="container">
-      <header className="session-bar">
-        {authLoading ? (
-          <p className="hint">Checking session…</p>
-        ) : currentUser ? (
-          <p className="session-info">
-            Signed in as <strong>{currentUser.username}</strong>{' '}
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => onLogout()}
-              disabled={authBusy}
-            >
-              Log out
-            </button>
-          </p>
-        ) : (
-          <p className="session-info">
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                setShowLoginForm((v) => !v)
-                setLoginError('')
-              }}
-            >
-              {showLoginForm ? 'Cancel' : 'Sign in'}
-            </button>
-          </p>
-        )}
-      </header>
+    <main className="container app-shell">
+      <div className="app-top-bar">
+        <header className="session-bar session-bar--top">
+          {authLoading ? (
+            <p className="hint">Checking session…</p>
+          ) : currentUser ? (
+            <p className="session-info session-info--compact">
+              Signed in as <strong>{currentUser.username}</strong>
+            </p>
+          ) : (
+            <span className="session-bar-spacer" aria-hidden />
+          )}
+        </header>
+
+        <button type="button" className="app-brand" onClick={goHome}>
+          <h1 className="app-brand-title">Inspire Hub</h1>
+        </button>
+
+        <HamburgerNav
+          open={navOpen}
+          onOpen={() => setNavOpen(true)}
+          onClose={() => setNavOpen(false)}
+          activeView={activeView}
+          onSelect={onNavSelect}
+          currentUser={currentUser}
+          authLoading={authLoading}
+          authBusy={authBusy}
+          onSignIn={() => {
+            setShowLoginForm(true)
+            setLoginError('')
+          }}
+          onLogout={onLogout}
+        />
+      </div>
 
       {!authLoading && !currentUser && showLoginForm && (
         <section className="card login-card">
@@ -776,409 +622,89 @@ function App() {
               />
             </label>
             {loginError && <p className="error">{loginError}</p>}
-            <button type="submit" disabled={authBusy}>
-              {authBusy ? 'Signing in…' : 'Sign in'}
-            </button>
+            <div className="login-actions">
+              <button type="submit" disabled={authBusy}>
+                {authBusy ? 'Signing in…' : 'Sign in'}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={authBusy}
+                onClick={() => {
+                  setShowLoginForm(false)
+                  setLoginError('')
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </section>
       )}
 
-      <h1>Inspire Hub</h1>
       <p className="subtitle">
-        Add inspirations with OCR preview. Step {step} of 2.
+        {activeView === 'addInspiration'
+          ? `Add inspirations with OCR preview. Step ${step} of 2.`
+          : 'Your library — one spark at a time.'}
       </p>
 
-      <section className="card">
-        <h2>{step === 1 ? '1 · Upload & details' : '2 · Preview & save'}</h2>
-
-        {step === 1 && (
-          <form className="form" onSubmit={onPreviewSubmit}>
-            <label>
-              Source title
-              <input
-                name="source_title"
-                value={step1Form.source_title}
-                onChange={onStep1Change}
-              />
-            </label>
-
-            <label>
-              Essence
-              <input
-                name="essence"
-                value={step1Form.essence}
-                onChange={onStep1Change}
-              />
-            </label>
-
-            <label>
-              Your thoughts (optional if you add screenshots)
-              <textarea
-                name="user_thoughts"
-                value={step1Form.user_thoughts}
-                onChange={onStep1Change}
-                rows={3}
-              />
-            </label>
-
-            <label>
-              Source type
-              <select
-                name="source_type"
-                value={step1Form.source_type}
-                onChange={onStep1Change}
-              >
-                <option value="book">book</option>
-                <option value="article">article</option>
-                <option value="video">video</option>
-                <option value="podcast">podcast</option>
-                <option value="other">other</option>
-              </select>
-            </label>
-
-            <label>
-              Reference (optional)
-              <input
-                name="reference"
-                value={step1Form.reference}
-                onChange={onStep1Change}
-              />
-            </label>
-
-            <div className="screenshot-block" role="group" aria-label="Screenshots">
-              <p className="screenshot-block-label">
-                Screenshots (optional if you added thoughts)
-              </p>
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="visually-hidden"
-                tabIndex={-1}
-                onChange={onCameraCaptureChange}
-                aria-hidden
-              />
-              <div className="screenshot-actions">
-                <button
-                  type="button"
-                  className="secondary camera-btn"
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  Take photo
-                </button>
-                <label className="file-picker-label">
-                  Choose from library
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={onGalleryFilesChange}
-                  />
-                </label>
-              </div>
-              <p className="hint">
-                Take photo adds each shot. Library picker replaces the current list.
-              </p>
-            </div>
-            {screenshotFiles.length > 0 && (
-              <p className="hint">{screenshotFiles.length} file(s) selected</p>
-            )}
-
-            <button type="submit" disabled={submitting}>
-              {submitting ? 'Running OCR…' : 'Continue to preview'}
-            </button>
-          </form>
-        )}
-
-        {step === 2 && draftForm && (
-          <form className="form" onSubmit={onCommitSubmit}>
-            <p className="hint">
-              Confirm title, essence, and source type before saving (required).
-            </p>
-
-            <label>
-              Source title
-              <input
-                name="source_title"
-                value={draftForm.source_title}
-                onChange={onDraftFormChange}
-                required
-              />
-            </label>
-
-            <label>
-              Essence
-              <input
-                name="essence"
-                value={draftForm.essence}
-                onChange={onDraftFormChange}
-                required
-              />
-            </label>
-
-            <label>
-              Your thoughts
-              <textarea
-                name="user_thoughts"
-                value={draftForm.user_thoughts ?? ''}
-                onChange={onDraftFormChange}
-                rows={3}
-              />
-            </label>
-
-            <label>
-              Source type
-              <select
-                name="source_type"
-                value={draftForm.source_type}
-                onChange={onDraftFormChange}
-                required
-              >
-                <option value="book">book</option>
-                <option value="article">article</option>
-                <option value="video">video</option>
-                <option value="podcast">podcast</option>
-                <option value="other">other</option>
-              </select>
-            </label>
-
-            <label>
-              Reference
-              <input
-                name="reference"
-                value={draftForm.reference ?? ''}
-                onChange={onDraftFormChange}
-              />
-            </label>
-
-            {draftScreenshots.length > 0 && (
-              <div className="preview-shots">
-                <h3>Screenshots</h3>
-                {draftScreenshots.map((s, index) => (
-                  <div key={`${s.filename}-${index}`} className="preview-shot">
-                    <img
-                      src={imageDataUrl(s.image_base64, s.filename)}
-                      alt={s.filename}
-                      className="preview-thumb"
-                    />
-                    <label className="checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={s.keep}
-                        onChange={(e) =>
-                          onScreenshotKeepChange(index, e.target.checked)
-                        }
-                      />
-                      Keep this image when saving
-                    </label>
-                    <label>
-                      Extracted text (from OCR — use list below to set final text)
-                      <textarea
-                        className="ocr-textarea ocr-textarea-readonly"
-                        value={s.extracted_text ?? ''}
-                        readOnly
-                        rows={5}
-                        aria-readonly="true"
-                      />
-                    </label>
-                    <ExtractedTextPickerPanel
-                      text={s.extracted_text ?? ''}
-                      onApply={(next) => onScreenshotTextChange(index, next)}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="actions">
-              <button
-                type="button"
-                className="secondary"
-                onClick={goBackToStep1}
-                disabled={submitting}
-              >
-                Back
-              </button>
-              <button type="submit" disabled={submitting}>
-                {submitting ? 'Saving…' : 'Save inspiration'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {formError && <p className="error">Error: {formError}</p>}
-      </section>
-
-      {loading && <p>Loading inspirations...</p>}
-      {error && <p className="error">Error: {error}</p>}
-
-      {!loading && listAuthRequired && (
-        <p className="hint">
-          Log in to load your inspirations list.{' '}
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setShowLoginForm(true)}
-          >
-            Sign in
-          </button>
-        </p>
+      {activeView === 'home' && (
+        <HomeView
+          loading={loading}
+          error={error}
+          listAuthRequired={listAuthRequired}
+          onSignInClick={() => setShowLoginForm(true)}
+          inspirations={inspirations}
+        />
       )}
 
-      {!loading && !error && !listAuthRequired && inspirations.length === 0 && (
-        <p>No inspirations yet.</p>
+      {activeView === 'addInspiration' && (
+        <AddInspirationView
+          currentUser={currentUser}
+          step={step}
+          step1Form={step1Form}
+          onStep1Change={onStep1Change}
+          sources={sources}
+          sourcesLoading={sourcesLoading}
+          screenshotFiles={screenshotFiles}
+          cameraInputRef={cameraInputRef}
+          onCameraCaptureChange={onCameraCaptureChange}
+          onGalleryFilesChange={onGalleryFilesChange}
+          onPreviewSubmit={onPreviewSubmit}
+          submitting={submitting}
+          draftForm={draftForm}
+          onDraftFormChange={onDraftFormChange}
+          draftScreenshots={draftScreenshots}
+          onScreenshotTextChange={onScreenshotTextChange}
+          onScreenshotKeepChange={onScreenshotKeepChange}
+          onCommitSubmit={onCommitSubmit}
+          goBackToStep1={goBackToStep1}
+          formError={formError}
+        />
       )}
 
-      {!loading && !error && !listAuthRequired && inspirations.length > 0 && (
-        <ul className="list">
-          {inspirations.map((item) => (
-            <li key={item.id} className="card">
-              <h3>{item.essence}</h3>
-              <p>
-                <strong>Source:</strong> {item.source_title} ({item.source_type})
-              </p>
-              {item.quote && <p>{item.quote}</p>}
-            </li>
-          ))}
-        </ul>
+      {activeView === 'sourcesGallery' && (
+        <SourcesGalleryView
+          sources={sources}
+          sourcesLoading={sourcesLoading}
+          sourcesError={sourcesError}
+        />
       )}
 
-      {currentUser && (
-        <section className="card sources-section">
-          <h2>Your sources</h2>
-            <p className="hint">
-            Track books or other works. <strong>Look up ISBN</strong> fills title,
-            author, and a cover preview from Open Library. <strong>Scan ISBN (photo)</strong>{' '}
-            reads the barcode when your browser supports it (often Chrome on Android).
-          </p>
-          <form className="form sources-form" onSubmit={onAddSourceSubmit}>
-            <input
-              ref={barcodeIsbnRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="visually-hidden"
-              tabIndex={-1}
-              onChange={onBarcodeIsbnPhoto}
-              aria-hidden
-            />
-            <label>
-              Title
-              <input
-                name="title"
-                value={newSource.title}
-                onChange={onNewSourceFieldChange}
-                required
-              />
-            </label>
-            <label>
-              Author
-              <input
-                name="author"
-                value={newSource.author}
-                onChange={onNewSourceFieldChange}
-              />
-            </label>
-            <label>
-              ISBN
-              <input
-                name="isbn"
-                value={newSource.isbn}
-                onChange={onNewSourceFieldChange}
-                inputMode="numeric"
-                autoComplete="off"
-              />
-            </label>
-            <div className="sources-isbn-actions">
-              <button
-                type="button"
-                className="secondary"
-                disabled={sourceFormBusy}
-                onClick={() => barcodeIsbnRef.current?.click()}
-              >
-                Scan ISBN (photo)
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                disabled={sourceFormBusy}
-                onClick={() => void lookupIsbnForNewSource()}
-              >
-                Look up ISBN
-              </button>
-            </div>
-            {isbnCoverPreviewUrl && (
-              <div className="source-cover-preview-wrap">
-                <p className="hint source-cover-preview-label">Cover preview</p>
-                <img
-                  src={isbnCoverPreviewUrl}
-                  alt="Book cover preview from Open Library"
-                  className="source-cover-preview-img"
-                  onError={() => setIsbnCoverPreviewUrl('')}
-                />
-              </div>
-            )}
-            <label>
-              Type
-              <select
-                name="source_type"
-                value={newSource.source_type}
-                onChange={onNewSourceFieldChange}
-              >
-                <option value="book">book</option>
-                <option value="article">article</option>
-                <option value="video">video</option>
-                <option value="podcast">podcast</option>
-                <option value="other">other</option>
-              </select>
-            </label>
-            <label>
-              Notes
-              <textarea
-                name="notes"
-                rows={2}
-                value={newSource.notes}
-                onChange={onNewSourceFieldChange}
-              />
-            </label>
-            {sourceFormMessage && (
-              <p className="hint sources-form-message">{sourceFormMessage}</p>
-            )}
-            <button type="submit" disabled={sourceFormBusy}>
-              {sourceFormBusy ? 'Saving…' : 'Add source'}
-            </button>
-          </form>
-
-          {sourcesLoading && <p className="hint">Loading sources…</p>}
-          {sourcesError && <p className="error">{sourcesError}</p>}
-          {!sourcesLoading && !sourcesError && sources.length === 0 && (
-            <p className="hint">No sources saved yet.</p>
-          )}
-          {!sourcesLoading && sources.length > 0 && (
-            <ul className="list sources-list">
-              {sources.map((s) => (
-                <li key={s.id} className="card sources-list-item">
-                  <h3>{s.title}</h3>
-                  {s.author && (
-                    <p>
-                      <strong>Author:</strong> {s.author}
-                    </p>
-                  )}
-                  {s.isbn && (
-                    <p>
-                      <strong>ISBN:</strong> {s.isbn}
-                    </p>
-                  )}
-                  <p>
-                    <strong>Type:</strong> {s.source_type}
-                  </p>
-                  {s.notes && <p>{s.notes}</p>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      {activeView === 'addSource' && (
+        <AddSourceView
+          currentUser={currentUser}
+          newSource={newSource}
+          onNewSourceFieldChange={onNewSourceFieldChange}
+          onAddSourceSubmit={onAddSourceSubmit}
+          sourceFormBusy={sourceFormBusy}
+          sourceFormMessage={sourceFormMessage}
+          isbnCoverPreviewUrl={isbnCoverPreviewUrl}
+          setIsbnCoverPreviewUrl={setIsbnCoverPreviewUrl}
+          barcodeIsbnRef={barcodeIsbnRef}
+          onBarcodeIsbnPhoto={onBarcodeIsbnPhoto}
+          lookupIsbnForNewSource={lookupIsbnForNewSource}
+        />
       )}
     </main>
   )

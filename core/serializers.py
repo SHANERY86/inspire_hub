@@ -60,11 +60,18 @@ class SourceSerializer(serializers.ModelSerializer):
 
 
 class InspirationSerializer(serializers.ModelSerializer):
+    source = serializers.PrimaryKeyRelatedField(
+        allow_null=True,
+        required=False,
+        queryset=Source.objects.none(),
+    )
+
     class Meta:
         model = Inspiration
         fields = [
             'id',
             'user',
+            'source',
             'source_title',
             'essence',
             'date',
@@ -74,6 +81,14 @@ class InspirationSerializer(serializers.ModelSerializer):
             'reference',
         ]
         read_only_fields = ['id', 'user', 'date']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        q = Source.objects.none()
+        if request and request.user.is_authenticated:
+            q = Source.objects.filter(user=request.user)
+        self.fields['source'].queryset = q
 
 
 class ScreenshotSerializer(serializers.ModelSerializer):
@@ -116,4 +131,17 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
     user_thoughts = serializers.CharField(allow_blank=True, required=False, default='')
     source_type = serializers.CharField()
     reference = serializers.CharField(allow_blank=True, required=False, default='')
+    source = serializers.PrimaryKeyRelatedField(
+        queryset=Source.objects.none(),
+        allow_null=True,
+        required=False,
+    )
     screenshots = ScreenshotDraftItemSerializer(many=True, required=False, default=list)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        q = Source.objects.none()
+        if request and request.user.is_authenticated:
+            q = Source.objects.filter(user=request.user)
+        self.fields['source'].queryset = q

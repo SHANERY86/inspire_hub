@@ -47,7 +47,14 @@ class Inspiration(models.Model):
     user_thoughts = models.TextField(blank=True, null=True)
     source_type = models.CharField(max_length=50)
     reference = models.CharField(max_length=255, blank=True, null=True)
-    
+    source = models.ForeignKey(
+        'Source',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='inspirations',
+    )
+
     class Meta:
         db_table = 'inspiration'
     

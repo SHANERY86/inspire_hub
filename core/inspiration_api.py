@@ -9,7 +9,8 @@ from rest_framework.views import APIView
 from .inspiration_commit import commit_inspiration_with_screenshots
 from .ocr_service import extract_text_from_upload, uploaded_file_to_base64
 from .preview_payload import preview_session_valid
-from .serializers import InspirationDraftCommitSerializer
+from .models import Source
+from .serializers import InspirationDraftCommitSerializer, InspirationSerializer
 
 
 class InspirationDraftPreviewAPIView(APIView):
@@ -22,12 +23,19 @@ class InspirationDraftPreviewAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
+        raw_source = (request.POST.get('source') or '').strip()
+        source_id = None
+        if raw_source.isdigit():
+            sid = int(raw_source)
+            if Source.objects.filter(pk=sid, user=request.user).exists():
+                source_id = sid
         form_data = {
             'source_title': request.POST.get('source_title', ''),
             'essence': request.POST.get('essence', ''),
             'user_thoughts': request.POST.get('user_thoughts', ''),
             'source_type': request.POST.get('source_type', ''),
             'reference': request.POST.get('reference', ''),
+            'source': source_id,
         }
         screenshots = request.FILES.getlist('screenshots')
 
@@ -69,7 +77,9 @@ class InspirationDraftCommitAPIView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request):
-        ser = InspirationDraftCommitSerializer(data=request.data)
+        ser = InspirationDraftCommitSerializer(
+            data=request.data, context={'request': request}
+        )
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -82,6 +92,7 @@ class InspirationDraftCommitAPIView(APIView):
             'reference': payload.get('reference') or '',
         }
         screenshot_list = payload.get('screenshots') or []
+        linked_source = payload.get('source')
 
         if not preview_session_valid(form_data, screenshot_list):
             return Response(
@@ -106,6 +117,7 @@ class InspirationDraftCommitAPIView(APIView):
                 form_data,
                 screenshot_rows,
                 user=request.user,
+                source=linked_source,
                 on_warning=None,
             )
         except DatabaseError:
@@ -115,16 +127,6 @@ class InspirationDraftCommitAPIView(APIView):
             )
 
         return Response(
-            {
-                'id': inspiration.id,
-                'user': inspiration.user_id,
-                'source_title': inspiration.source_title,
-                'essence': inspiration.essence,
-                'date': inspiration.date,
-                'quote': inspiration.quote,
-                'user_thoughts': inspiration.user_thoughts,
-                'source_type': inspiration.source_type,
-                'reference': inspiration.reference,
-            },
+            InspirationSerializer(inspiration, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
         )
