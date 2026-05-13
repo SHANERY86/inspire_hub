@@ -231,6 +231,31 @@ button.secondary:hover {
   color: var(--muted);
 }
 
+.request-account-page {
+  max-width: 36rem;
+  margin: 0 auto 2rem;
+}
+
+.request-account-page-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-app-brand);
+  font-size: clamp(1.5rem, 3.6vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: #ffffff;
+  text-align: center;
+}
+
+.request-account-page-lead {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.request-account-card--page {
+  margin-top: 0;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -462,10 +487,22 @@ button.secondary:hover {
   width: 100%;
 }
 
+.app-brand-title {
+  margin: 0;
+  font-family: var(--font-app-brand);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
 .app-guest-intro {
-  margin: 0.65rem 0 0;
-  padding: 0 0.25rem;
+  margin: 0.35rem auto 1.15rem;
+  padding: 0 0.5rem;
+  max-width: 26rem;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .app-guest-intro p {
@@ -501,15 +538,6 @@ button.secondary:hover {
   outline: 2px solid rgba(255, 255, 255, 0.95);
   outline-offset: 2px;
   border-radius: 2px;
-}
-
-.app-brand-title {
-  margin: 0;
-  font-family: var(--font-app-brand);
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #ffffff;
 }
 
 .hamburger-btn {

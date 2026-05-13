@@ -9,6 +9,11 @@ import { RequestAccountView } from './components/RequestAccountView.jsx'
 import { ScreenshotCropModal } from './components/ScreenshotCropModal.jsx'
 import { SourceInspirationsView } from './components/SourceInspirationsView.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
+import {
+  initialAppViewFromLocation,
+  spaPathKey,
+  syncBrowserPathToAppView,
+} from './lib/spaPath.js'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 const APP_BASE = import.meta.env.BASE_URL ?? '/'
@@ -71,7 +76,9 @@ function App() {
   const [loginError, setLoginError] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
 
-  const [activeView, setActiveView] = useState(/** @type {AppView} */ ('home'))
+  const [activeView, setActiveView] = useState(
+    /** @type {AppView} */ (() => initialAppViewFromLocation()),
+  )
   const [navOpen, setNavOpen] = useState(false)
 
   const [inspirations, setInspirations] = useState([])
@@ -373,6 +380,30 @@ function App() {
       setActiveView('home')
     }
   }, [currentUser, activeView])
+
+  useEffect(() => {
+    syncBrowserPathToAppView(activeView)
+  }, [activeView])
+
+  useEffect(() => {
+    function onPopState() {
+      const key = spaPathKey(window.location.pathname)
+      if (key === 'request-account') {
+        setActiveView('requestAccount')
+      } else {
+        setActiveView((prev) => (prev === 'requestAccount' ? 'home' : prev))
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  useEffect(() => {
+    document.title =
+      activeView === 'requestAccount' && !currentUser
+        ? 'Request an account · Inspire Hub'
+        : 'Inspire Hub'
+  }, [activeView, currentUser])
 
   function goHome() {
     setActiveView('home')
@@ -824,19 +855,6 @@ function App() {
           <button type="button" className="app-brand" onClick={goHome}>
             <h1 className="app-brand-title">Inspire Hub</h1>
           </button>
-          {!authLoading && !currentUser ? (
-            <div className="app-guest-intro">
-              <p>
-                Save inspiring things you read by snapshotting a page and use AI Driven OCR to convert the image to text
-              </p>
-              <p>
-                Keep a log of special things that inspire you or build a base for your own creative endeavours.
-              </p>
-              <p>
-                If you would like to request a login click here!
-              </p>
-            </div>
-          ) : null}
         </div>
 
         <HamburgerNav
@@ -855,6 +873,29 @@ function App() {
           onLogout={onLogout}
         />
       </div>
+
+      {!authLoading && !currentUser && activeView !== 'requestAccount' ? (
+        <div className="app-guest-intro">
+          <p>
+            Save inspiring things you read by snapshotting a page and use AI Driven OCR to convert
+            the image to text
+          </p>
+          <p>
+            Keep a log of special things that inspire you or build a base for your own creative
+            endeavours.
+          </p>
+          <p>
+            If you would like to request a login{' '}
+            <button
+              type="button"
+              className="app-guest-intro-link"
+              onClick={() => setActiveView('requestAccount')}
+            >
+              click here!
+            </button>
+          </p>
+        </div>
+      ) : null}
 
       {!authLoading && !currentUser && showLoginForm && (
         <section className="card login-card">
@@ -906,10 +947,6 @@ function App() {
         </p>
       )}
 
-      {activeView === 'requestAccount' && (
-        <p className="subtitle">Request access — your message is emailed to the site owner.</p>
-      )}
-
       {activeView === 'home' && (
         <HomeView
           loading={loading}
@@ -921,10 +958,13 @@ function App() {
       )}
 
       {activeView === 'requestAccount' && !currentUser && (
-        <RequestAccountView
-          onSubmitRequest={submitSignupRequest}
-          onCancel={() => setActiveView('home')}
-        />
+        <div className="request-account-page">
+          <RequestAccountView
+            isPageLayout
+            onSubmitRequest={submitSignupRequest}
+            onCancel={() => setActiveView('home')}
+          />
+        </div>
       )}
 
       {activeView === 'myInspirations' && (
