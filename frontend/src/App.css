@@ -820,6 +820,123 @@ button.secondary:hover {
   white-space: nowrap;
 }
 
+/* —— My inspirations (full library list) —— */
+.my-inspirations-view .view-panel-heading {
+  margin-bottom: 0.35rem;
+}
+
+.my-inspirations-lead {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.my-inspirations-thoughts,
+.my-inspirations-source-title,
+.my-inspirations-linked {
+  margin: 0.2rem 0 0;
+}
+
+.my-inspirations-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}
+
+.my-inspirations-shot-thumb-btn {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.my-inspirations-shot-thumb-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.my-inspirations-shot-thumb {
+  display: block;
+  max-width: min(100%, 280px);
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--thumbnail);
+  border: 1px solid var(--border-soft);
+}
+
+.my-inspirations-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(44, 30, 24, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.my-inspirations-lightbox-dialog {
+  position: relative;
+  max-width: min(96vw, 56rem);
+  max-height: min(92vh, 48rem);
+  margin: 0;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.my-inspirations-lightbox-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.my-inspirations-lightbox-close:hover {
+  background: var(--surface-muted);
+}
+
+.my-inspirations-lightbox-close:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.my-inspirations-lightbox-img {
+  display: block;
+  max-width: 100%;
+  max-height: min(85vh, 44rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
 /* —— Inspirations for one source —— */
 .source-inspirations-header {
   margin-bottom: 0.75rem;

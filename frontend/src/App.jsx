@@ -4,6 +4,7 @@ import { AddInspirationView } from './components/AddInspirationView.jsx'
 import { AddSourceView } from './components/AddSourceView.jsx'
 import { HamburgerNav } from './components/HamburgerNav.jsx'
 import { HomeView } from './components/HomeView.jsx'
+import { MyInspirationsView } from './components/MyInspirationsView.jsx'
 import { ScreenshotCropModal } from './components/ScreenshotCropModal.jsx'
 import { SourceInspirationsView } from './components/SourceInspirationsView.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
@@ -58,7 +59,7 @@ const emptyNewSource = {
   notes: '',
 }
 
-/** @typedef {'home' | 'addInspiration' | 'sourcesGallery' | 'sourceInspirations' | 'addSource'} AppView */
+/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'sourceInspirations' | 'addSource'} AppView */
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -769,6 +770,16 @@ function App() {
 
       {activeView === 'home' && (
         <HomeView
+          loading={loading}
+          error={error}
+          listAuthRequired={listAuthRequired}
+          onSignInClick={() => setShowLoginForm(true)}
+          inspirations={inspirations}
+        />
+      )}
+
+      {activeView === 'myInspirations' && (
+        <MyInspirationsView
           loading={loading}
           error={error}
           listAuthRequired={listAuthRequired}

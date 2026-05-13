@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -23,9 +24,11 @@ class InspirationViewSet(viewsets.ModelViewSet):
     filterset_class = InspirationFilter
 
     def get_queryset(self):
+        shot_qs = Screenshot.objects.order_by('uploaded_at', 'pk')
         return (
             Inspiration.objects.filter(user=self.request.user)
             .select_related('source')
+            .prefetch_related(Prefetch('screenshots', queryset=shot_qs))
             .order_by('-date')
         )
 

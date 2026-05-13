@@ -59,6 +59,30 @@ class TestInspirationCRUD:
         assert r.data['results'][0]['essence'] == 'One'
         assert r.data['results'][0]['source'] == src_a.pk
 
+    def test_list_includes_nested_screenshots(self, authenticated_api_client, api_user):
+        ins = Inspiration.objects.create(
+            user=api_user,
+            source_title='Work',
+            essence='Caption',
+            source_type='book',
+        )
+        authenticated_api_client.post(
+            '/api/v1/screenshots/',
+            {
+                'inspiration': ins.pk,
+                'image': _tiny_jpeg_upload('panel.jpg'),
+                'extracted_text': '',
+            },
+            format='multipart',
+        )
+        r = authenticated_api_client.get('/api/v1/inspirations/')
+        assert r.status_code == status.HTTP_200_OK
+        assert r.data['count'] == 1
+        row = r.data['results'][0]
+        assert len(row['screenshots']) == 1
+        assert row['screenshots'][0]['id']
+        assert row['screenshots'][0]['image']
+
     def test_create_and_retrieve(self, authenticated_api_client):
         payload = {
             'source_title': 'Test Book',
@@ -79,6 +103,7 @@ class TestInspirationCRUD:
         assert r2.data.get('source') is None
         assert r2.data.get('source_display_title') == ''
         assert r2.data.get('source_display_author') == ''
+        assert r2.data.get('screenshots') == []
 
     def test_retrieve_linked_source_display_fields(self, authenticated_api_client, api_user):
         src = Source.objects.create(

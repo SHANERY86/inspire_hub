@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 
 /**
  * Top-right menu: Home, sections, and sign in / account.
- * `onSelect` receives view id ('home' | …); caller closes menu.
+ * `onSelect` receives view id ('home' | 'myInspirations' | …); caller closes menu.
  */
 export function HamburgerNav({
   open,
@@ -56,6 +56,15 @@ export function HamburgerNav({
                   onClick={() => onSelect('home')}
                 >
                   Home
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className={`nav-menu-item${activeView === 'myInspirations' ? ' is-active' : ''}`}
+                  onClick={() => onSelect('myInspirations')}
+                >
+                  My inspirations
                 </button>
               </li>
               <li>

@@ -59,6 +59,15 @@ class SourceSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class InspirationScreenshotSummarySerializer(serializers.ModelSerializer):
+    """Nested on inspiration list/detail: enough to render thumbnails."""
+
+    class Meta:
+        model = Screenshot
+        fields = ['id', 'image']
+        read_only_fields = ['id', 'image']
+
+
 class InspirationSerializer(serializers.ModelSerializer):
     source = serializers.PrimaryKeyRelatedField(
         allow_null=True,
@@ -67,6 +76,10 @@ class InspirationSerializer(serializers.ModelSerializer):
     )
     source_display_title = serializers.SerializerMethodField()
     source_display_author = serializers.SerializerMethodField()
+    screenshots = InspirationScreenshotSummarySerializer(
+        many=True,
+        read_only=True,
+    )
 
     class Meta:
         model = Inspiration
@@ -83,6 +96,7 @@ class InspirationSerializer(serializers.ModelSerializer):
             'user_thoughts',
             'source_type',
             'reference',
+            'screenshots',
         ]
         read_only_fields = [
             'id',
@@ -90,6 +104,7 @@ class InspirationSerializer(serializers.ModelSerializer):
             'date',
             'source_display_title',
             'source_display_author',
+            'screenshots',
         ]
 
     def __init__(self, *args, **kwargs):

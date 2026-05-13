@@ -14,6 +14,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/inspire-hub/, ''),
       },
+      // Uploaded screenshots (when API returns relative /media/... URLs)
+      '^/media': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
     },
   },
 })
