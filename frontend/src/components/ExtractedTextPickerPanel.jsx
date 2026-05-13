@@ -95,6 +95,15 @@ function joinSegments(mode, segments) {
   return segments[0] ?? ''
 }
 
+/** Keep picker selections when parent text edits change length (pad/truncate); preserve all when length matches. */
+function reconcileChecked(prev, newLength) {
+  if (newLength === prev.length) return prev
+  if (newLength > prev.length) {
+    return [...prev, ...Array(newLength - prev.length).fill(false)]
+  }
+  return prev.slice(0, newLength)
+}
+
 export function ExtractedTextPickerPanel({ text, onApply }) {
   const [trimEdges, setTrimEdges] = useState(false)
   const { mode, segments } = useMemo(
@@ -116,7 +125,8 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
 
     if (textChanged) {
       setTrimEdges(false)
-      setChecked(segmentTextForPickerRaw(text).segments.map(() => false))
+      const newLen = segmentTextForPickerRaw(text).segments.length
+      setChecked((prev) => reconcileChecked(prev, newLen))
       return
     }
 
