@@ -55,6 +55,7 @@ const emptyStep1 = {
   reference: '',
   source: null,
   is_comic_panel: false,
+  is_public: false,
 }
 
 const emptyNewSource = {
@@ -428,6 +429,10 @@ function App() {
       setStep1Form((prev) => ({ ...prev, is_comic_panel: checked }))
       return
     }
+    if (type === 'checkbox' && name === 'is_public') {
+      setStep1Form((prev) => ({ ...prev, is_public: checked }))
+      return
+    }
     if (name === 'source') {
       const newSourceId = value === '' ? null : Number(value)
       setStep1Form((prev) => {
@@ -503,6 +508,9 @@ function App() {
         fd.append('source', String(step1Form.source))
       }
       fd.append('comic_panel', step1Form.is_comic_panel ? '1' : '0')
+      if (currentUser) {
+        fd.append('is_public', step1Form.is_public ? '1' : '0')
+      }
       for (const file of screenshotFiles) {
         fd.append('screenshots', file)
       }
@@ -529,6 +537,7 @@ function App() {
       setDraftForm({
         ...formData,
         is_comic_panel: Boolean(formData.is_comic_panel),
+        is_public: Boolean(formData.is_public ?? step1Form.is_public),
       })
       setDraftScreenshots(data.screenshots ?? [])
       setStep(2)
@@ -540,7 +549,11 @@ function App() {
   }
 
   function onDraftFormChange(event) {
-    const { name, value } = event.target
+    const { name, value, type, checked } = event.target
+    if (type === 'checkbox' && name === 'is_public') {
+      setDraftForm((prev) => (prev ? { ...prev, is_public: checked } : prev))
+      return
+    }
     if (name === 'source') {
       const newSourceId = value === '' ? null : Number(value)
       setDraftForm((prev) => {
@@ -568,6 +581,9 @@ function App() {
 
   function goBackToStep1() {
     setStep(1)
+    setStep1Form((prev) =>
+      draftForm != null ? { ...prev, is_public: Boolean(draftForm.is_public) } : prev,
+    )
     setDraftForm(null)
     setDraftScreenshots([])
     setFormError('')
@@ -729,6 +745,7 @@ function App() {
         reference: draftForm.reference ?? '',
         source: draftForm.source ?? null,
         is_comic_panel: Boolean(draftForm.is_comic_panel),
+        is_public: Boolean(draftForm.is_public),
         screenshots: draftScreenshots.map((s) => ({
           image_base64: s.image_base64,
           filename: s.filename,
@@ -882,7 +899,11 @@ function App() {
           </p>
           <p>
             Keep a log of special things that inspire you or build a base for your own creative
-            endeavours.
+            endeavours. 
+          </p>
+          <p>
+            An inspiring turn of phrase.. a beautiful comic panel.. These things will no longer disappear into the ether,
+            they are memorialized here.
           </p>
           <p>
             If you would like to request a login{' '}
@@ -952,6 +973,7 @@ function App() {
           loading={loading}
           error={error}
           listAuthRequired={listAuthRequired}
+          guestHome={!authLoading && !currentUser}
           onSignInClick={() => setShowLoginForm(true)}
           inspirations={inspirations}
         />

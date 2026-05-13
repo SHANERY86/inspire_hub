@@ -7,10 +7,18 @@ import {
   SPOTLIGHT_ROTATE_MS,
 } from '../lib/spotlightFonts.js'
 
+/** Quote, OCR text, or summary — anything we can show in the rotating spotlight. */
+function inspirationSpotlightPrimaryText(i) {
+  return (
+    (i.quote || '').trim() ||
+    (i.essence || '').trim() ||
+    (i.user_thoughts || '').trim()
+  )
+}
+
 function inspirationHasSpotlightContent(i) {
-  const quote = (i.quote || '').trim()
   const shots = Array.isArray(i.screenshots) ? i.screenshots : []
-  return Boolean(quote) || shots.length > 0
+  return Boolean(inspirationSpotlightPrimaryText(i)) || shots.length > 0
 }
 
 function pickDifferentIndex(prev, len) {
@@ -24,17 +32,34 @@ function pickDifferentIndex(prev, len) {
   return n
 }
 
+/** Fisher–Yates shuffle (new array) so guest spotlight rotation order is random, not API order. */
+function shuffleArray(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const t = a[i]
+    a[i] = a[j]
+    a[j] = t
+  }
+  return a
+}
+
 export function HomeView({
   loading,
   error,
   listAuthRequired,
+  guestHome = false,
   onSignInClick,
   inspirations,
 }) {
-  const captures = useMemo(
-    () => inspirations.filter(inspirationHasSpotlightContent),
-    [inspirations],
-  )
+  // Signed-in: API returns this user's library. Guests: public inspirations only (see viewset).
+  // Shuffle the guest spotlight pool so auto-rotate and random swaps feel like "random public picks".
+  const captures = useMemo(() => {
+    const pool = guestHome ? inspirations.filter((i) => i.is_public) : inspirations
+    const eligible = pool.filter(inspirationHasSpotlightContent)
+    if (guestHome && eligible.length > 1) return shuffleArray(eligible)
+    return eligible
+  }, [inspirations, guestHome])
   const captureIds = useMemo(() => captures.map((c) => c.id).join(','), [captures])
 
   const capturesRef = useRef(captures)
@@ -241,9 +266,20 @@ export function HomeView({
     return (
       <section className="card view-panel home-view">
         <h2 className="home-view-title">Welcome</h2>
-        <p className="hint">
-          No inspirations yet. Use the menu to add one or save a source.
-        </p>
+        {guestHome ? (
+          <p className="hint">
+            The public spotlight is empty for now. Creators can mark an inspiration as
+            visible on this home page after they sign in.{' '}
+            <button type="button" className="secondary" onClick={onSignInClick}>
+              Sign in
+            </button>{' '}
+            for your full library.
+          </p>
+        ) : (
+          <p className="hint">
+            No inspirations yet. Use the menu to add one or save a source.
+          </p>
+        )}
       </section>
     )
   }
@@ -252,8 +288,9 @@ export function HomeView({
     return (
       <section className="card view-panel home-view">
         <p className="hint">
-          None of your saved inspirations have captured text or a saved panel image yet.
-          OCR text or “Save image only” uploads can appear here.
+          {guestHome
+            ? 'No public inspirations have text or images for the spotlight yet. Add a summary, captured text, your thoughts, or a panel image when you sign in.'
+            : 'None of your saved inspirations have text or images for the spotlight yet. Add essence, captured text, your thoughts, or a panel image.'}
         </p>
       </section>
     )
@@ -263,11 +300,17 @@ export function HomeView({
   const active = captures[safeIdx]
   const shots = Array.isArray(active.screenshots) ? active.screenshots : []
   const showScreenshots = shots.length > 0
-  const captured = (active.quote || '').trim()
+  const captured = inspirationSpotlightPrimaryText(active)
   const fontStack = SPOTLIGHT_FONTS[fontIdx % SPOTLIGHT_FONTS.length].stack
 
+  const contributor = guestHome ? (active.added_by_username || '').trim() : ''
   const srcTitle = (active.source_display_title ?? '').trim()
+  const workTitle = (srcTitle || (active.source_title || '').trim()).trim()
   const srcAuthor = (active.source_display_author ?? '').trim()
+
+  const showAttribution = guestHome
+    ? Boolean(contributor || workTitle || srcAuthor)
+    : Boolean(workTitle || srcAuthor)
 
   const fadeStyle = {
     opacity: visible ? 1 : 0,
@@ -303,12 +346,23 @@ export function HomeView({
           {captured}
         </p>
       )}
-      {(srcTitle || srcAuthor) && (
+      {showAttribution && (
         <p className="home-spotlight-attribution" lang="en">
-          {srcTitle ? (
-            <span className="home-spotlight-attribution-title">{srcTitle}</span>
+          {guestHome && contributor ? (
+            <>
+              <span className="home-spotlight-attribution-by">{contributor}</span>
+              {(workTitle || srcAuthor) ? (
+                <span className="home-spotlight-attribution-sep" aria-hidden="true">
+                  {' '}
+                  ·{' '}
+                </span>
+              ) : null}
+            </>
           ) : null}
-          {srcTitle && srcAuthor ? (
+          {workTitle ? (
+            <span className="home-spotlight-attribution-title">{workTitle}</span>
+          ) : null}
+          {workTitle && srcAuthor ? (
             <span className="home-spotlight-attribution-sep" aria-hidden="true">
               {' '}
               ·{' '}

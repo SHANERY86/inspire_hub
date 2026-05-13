@@ -76,6 +76,7 @@ class InspirationSerializer(serializers.ModelSerializer):
     )
     source_display_title = serializers.SerializerMethodField()
     source_display_author = serializers.SerializerMethodField()
+    added_by_username = serializers.SerializerMethodField()
     screenshots = InspirationScreenshotSummarySerializer(
         many=True,
         read_only=True,
@@ -96,6 +97,8 @@ class InspirationSerializer(serializers.ModelSerializer):
             'user_thoughts',
             'source_type',
             'reference',
+            'is_public',
+            'added_by_username',
             'screenshots',
         ]
         read_only_fields = [
@@ -104,6 +107,7 @@ class InspirationSerializer(serializers.ModelSerializer):
             'date',
             'source_display_title',
             'source_display_author',
+            'added_by_username',
             'screenshots',
         ]
 
@@ -114,6 +118,13 @@ class InspirationSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             q = Source.objects.filter(user=request.user)
         self.fields['source'].queryset = q
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and not request.user.is_authenticated:
+            data.pop('user', None)
+        return data
 
     def get_source_display_title(self, obj):
         src = getattr(obj, 'source', None)
@@ -126,6 +137,15 @@ class InspirationSerializer(serializers.ModelSerializer):
         if src is None:
             return ''
         return (src.author or '').strip()
+
+    def get_added_by_username(self, obj):
+        request = self.context.get('request')
+        if not request or request.user.is_authenticated:
+            return ''
+        owner = getattr(obj, 'user', None)
+        if owner is None:
+            return ''
+        return (getattr(owner, 'username', None) or '').strip()
 
 
 class ScreenshotSerializer(serializers.ModelSerializer):
@@ -169,6 +189,7 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
     source_type = serializers.CharField()
     reference = serializers.CharField(allow_blank=True, required=False, default='')
     is_comic_panel = serializers.BooleanField(required=False, default=False)
+    is_public = serializers.BooleanField(required=False, default=False)
     source = serializers.PrimaryKeyRelatedField(
         queryset=Source.objects.none(),
         allow_null=True,

@@ -210,12 +210,17 @@ export function MyInspirationsView({
       reference: i.reference ?? '',
       quote: i.quote ?? '',
       source: i.source ?? null,
+      is_public: Boolean(i.is_public),
     })
   }
 
   function onEditFieldChange(event) {
-    const { name, value } = event.target
+    const { name, value, type, checked } = event.target
     if (!editRow) return
+    if (type === 'checkbox' && name === 'is_public') {
+      setEditRow((prev) => (prev ? { ...prev, is_public: checked } : prev))
+      return
+    }
     if (name === 'source') {
       const next = value === '' ? null : Number(value)
       setEditRow((prev) => {
@@ -247,6 +252,7 @@ export function MyInspirationsView({
         reference: editRow.reference,
         quote: editRow.quote,
         source: editRow.source,
+        is_public: Boolean(editRow.is_public),
       })
       setEditRow(null)
     } catch (err) {
@@ -441,6 +447,15 @@ export function MyInspirationsView({
                 </select>
               </label>
             )}
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                name="is_public"
+                checked={Boolean(editRow.is_public)}
+                onChange={onEditFieldChange}
+              />
+              Show on public home page (visitors without an account can see this inspiration)
+            </label>
             {actionError ? <p className="error">{actionError}</p> : null}
             <div className="my-inspirations-edit-actions">
               <button type="submit" disabled={actionBusy}>

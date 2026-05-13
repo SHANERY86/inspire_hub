@@ -795,6 +795,11 @@ button.secondary:hover {
   color: rgba(255, 255, 255, 0.78);
 }
 
+.home-spotlight-attribution-by {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 600;
+}
+
 .home-spotlight-arrow {
   flex-shrink: 0;
   align-self: center;

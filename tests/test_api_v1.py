@@ -24,9 +24,54 @@ def _tiny_jpeg_b64():
 
 @pytest.mark.django_db
 class TestInspirationCRUD:
-    def test_list_requires_auth(self, api_client):
+    def test_list_anonymous_returns_public_only(self, api_client, api_user):
+        Inspiration.objects.create(
+            user=api_user,
+            source_title='Private',
+            essence='A',
+            source_type='book',
+            is_public=False,
+        )
+        pub = Inspiration.objects.create(
+            user=api_user,
+            source_title='Public post',
+            essence='B',
+            source_type='book',
+            quote='visible',
+            is_public=True,
+        )
         r = api_client.get('/api/v1/inspirations/')
-        assert r.status_code == status.HTTP_403_FORBIDDEN
+        assert r.status_code == status.HTTP_200_OK
+        assert r.data['count'] == 1
+        assert r.data['results'][0]['id'] == pub.pk
+        assert r.data['results'][0]['is_public'] is True
+        assert 'user' not in r.data['results'][0]
+        assert r.data['results'][0]['added_by_username'] == api_user.username
+
+    def test_anonymous_retrieve_public_ok_private_404(self, api_client, api_user):
+        pub = Inspiration.objects.create(
+            user=api_user,
+            source_title='P',
+            essence='E',
+            source_type='book',
+            quote='q',
+            is_public=True,
+        )
+        priv = Inspiration.objects.create(
+            user=api_user,
+            source_title='X',
+            essence='Y',
+            source_type='book',
+            is_public=False,
+        )
+        r_ok = api_client.get(f'/api/v1/inspirations/{pub.pk}/')
+        assert r_ok.status_code == status.HTTP_200_OK
+        assert r_ok.data['essence'] == 'E'
+        assert 'user' not in r_ok.data
+        assert r_ok.data['added_by_username'] == api_user.username
+
+        r404 = api_client.get(f'/api/v1/inspirations/{priv.pk}/')
+        assert r404.status_code == status.HTTP_404_NOT_FOUND
 
     def test_list_empty(self, authenticated_api_client):
         r = authenticated_api_client.get('/api/v1/inspirations/')
@@ -104,6 +149,26 @@ class TestInspirationCRUD:
         assert r2.data.get('source_display_title') == ''
         assert r2.data.get('source_display_author') == ''
         assert r2.data.get('screenshots') == []
+        assert r2.data.get('is_public') is False
+
+    def test_patch_is_public(self, authenticated_api_client, api_user):
+        ins = Inspiration.objects.create(
+            user=api_user,
+            source_title='T',
+            essence='E',
+            source_type='book',
+            quote='q',
+            is_public=False,
+        )
+        r = authenticated_api_client.patch(
+            f'/api/v1/inspirations/{ins.pk}/',
+            {'is_public': True},
+            format='json',
+        )
+        assert r.status_code == status.HTTP_200_OK
+        assert r.data['is_public'] is True
+        ins.refresh_from_db()
+        assert ins.is_public is True
 
     def test_retrieve_linked_source_display_fields(self, authenticated_api_client, api_user):
         src = Source.objects.create(
@@ -351,6 +416,7 @@ class TestInspirationDraftPreview:
         )
         assert r.status_code == status.HTTP_200_OK
         assert r.data['form_data']['is_comic_panel'] is True
+        assert r.data['form_data'].get('is_public') is False
         assert r.data['screenshots'][0]['extracted_text'] == ''
 
 
@@ -379,6 +445,32 @@ class TestInspirationDraftCommit:
         assert r.status_code == status.HTTP_201_CREATED
         assert r.data['source'] == src.pk
         assert Inspiration.objects.get(pk=r.data['id']).source_id == src.pk
+        assert Inspiration.objects.get(pk=r.data['id']).is_public is False
+
+    def test_commit_sets_is_public(self, authenticated_api_client, api_user):
+        payload = {
+            'source_title': 'Public title',
+            'essence': 'Pub e',
+            'user_thoughts': '',
+            'source_type': 'book',
+            'reference': '',
+            'is_public': True,
+            'screenshots': [
+                {
+                    'image_base64': _tiny_jpeg_b64(),
+                    'filename': 'p.jpg',
+                    'extracted_text': 'line',
+                }
+            ],
+        }
+        r = authenticated_api_client.post(
+            '/api/v1/inspiration-drafts/commit/',
+            payload,
+            format='json',
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        assert r.data['is_public'] is True
+        assert Inspiration.objects.get(pk=r.data['id']).is_public is True
 
     def test_commit_rejects_other_users_source(
         self, authenticated_api_client, django_user_model

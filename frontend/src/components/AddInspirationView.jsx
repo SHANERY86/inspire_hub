@@ -112,6 +112,18 @@ export function AddInspirationView({
             Save image only
           </label>
 
+          {currentUser && (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                name="is_public"
+                checked={Boolean(step1Form.is_public)}
+                onChange={onStep1Change}
+              />
+              Show on public home page (visitors without an account can see this inspiration)
+            </label>
+          )}
+
           <div className="screenshot-block" role="group" aria-label="Screenshots">
             <p className="screenshot-block-label">
               Screenshots (optional if you added thoughts)
@@ -298,6 +310,18 @@ export function AddInspirationView({
                 </div>
               ))}
             </div>
+          )}
+
+          {currentUser && (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                name="is_public"
+                checked={Boolean(draftForm.is_public)}
+                onChange={onDraftFormChange}
+              />
+              Show on public home page (visitors without an account can see this inspiration)
+            </label>
           )}
 
           <div className="actions">

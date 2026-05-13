@@ -62,6 +62,7 @@ def commit_inspiration_with_screenshots(
             source_type=form_data['source_type'].strip(),
             reference=reference,
             source=source,
+            is_public=bool(form_data.get('is_public')),
         )
 
         if comic_panel:

@@ -1,6 +1,6 @@
 from django.db.models import Prefetch
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 
 from .filters import InspirationFilter, ScreenshotFilter
 from .models import Inspiration, Screenshot, Source
@@ -19,18 +19,18 @@ class SourceViewSet(viewsets.ModelViewSet):
 
 
 class InspirationViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = InspirationSerializer
     filterset_class = InspirationFilter
 
     def get_queryset(self):
         shot_qs = Screenshot.objects.order_by('uploaded_at', 'pk')
-        return (
-            Inspiration.objects.filter(user=self.request.user)
-            .select_related('source')
-            .prefetch_related(Prefetch('screenshots', queryset=shot_qs))
-            .order_by('-date')
+        base = Inspiration.objects.select_related('source', 'user').prefetch_related(
+            Prefetch('screenshots', queryset=shot_qs)
         )
+        if self.request.user.is_authenticated:
+            return base.filter(user=self.request.user).order_by('-date')
+        return base.filter(is_public=True).order_by('-date')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

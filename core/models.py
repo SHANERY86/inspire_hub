@@ -54,6 +54,11 @@ class Inspiration(models.Model):
         on_delete=models.SET_NULL,
         related_name='inspirations',
     )
+    is_public = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='When true, this inspiration may appear on the public home spotlight for guests.',
+    )
 
     class Meta:
         db_table = 'inspiration'
