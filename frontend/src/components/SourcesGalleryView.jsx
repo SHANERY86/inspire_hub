@@ -1,36 +1,44 @@
 import { useState } from 'react'
 import { openLibraryCoverUrlFromIsbn } from '../lib/openLibrary.js'
 
-function SourceCoverTile({ source }) {
+function SourceCoverTile({ source, onOpen }) {
   const [broken, setBroken] = useState(false)
   const url = openLibraryCoverUrlFromIsbn(source.isbn)
+  const label = source.title || 'Untitled source'
 
   return (
-    <figure className="sources-gallery-tile">
-      <div className="sources-gallery-cover-wrap">
-        {url && !broken ? (
-          <img
-            src={url}
-            alt=""
-            className="sources-gallery-cover"
-            onError={() => setBroken(true)}
-          />
-        ) : (
-          <div className="sources-gallery-cover sources-gallery-cover--placeholder" aria-hidden>
-            <span className="sources-gallery-placeholder-text">
-              {(source.title || '?').slice(0, 2).toUpperCase()}
+    <button
+      type="button"
+      className="sources-gallery-tile"
+      onClick={() => onOpen(source.id)}
+      aria-label={`Open inspirations for ${label}`}
+    >
+      <span className="sources-gallery-tile-inner">
+        <span className="sources-gallery-cover-wrap">
+          {url && !broken ? (
+            <img
+              src={url}
+              alt=""
+              className="sources-gallery-cover"
+              onError={() => setBroken(true)}
+            />
+          ) : (
+            <span className="sources-gallery-cover sources-gallery-cover--placeholder" aria-hidden>
+              <span className="sources-gallery-placeholder-text">
+                {(source.title || '?').slice(0, 2).toUpperCase()}
+              </span>
             </span>
-          </div>
-        )}
-      </div>
-      <figcaption className="sources-gallery-caption" title={source.title}>
-        {source.title}
-      </figcaption>
-    </figure>
+          )}
+        </span>
+        <span className="sources-gallery-caption" title={source.title}>
+          {source.title}
+        </span>
+      </span>
+    </button>
   )
 }
 
-export function SourcesGalleryView({ sources, sourcesLoading, sourcesError }) {
+export function SourcesGalleryView({ sources, sourcesLoading, sourcesError, onOpenSource }) {
   if (sourcesLoading) {
     return (
       <section className="card view-panel sources-gallery-view">
@@ -61,7 +69,7 @@ export function SourcesGalleryView({ sources, sourcesLoading, sourcesError }) {
       <h2 className="view-panel-heading">Inspiration sources</h2>
       <div className="sources-gallery-grid">
         {sources.map((s) => (
-          <SourceCoverTile key={s.id} source={s} />
+          <SourceCoverTile key={s.id} source={s} onOpen={onOpenSource} />
         ))}
       </div>
     </section>

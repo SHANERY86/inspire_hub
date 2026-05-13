@@ -27,6 +27,31 @@ class TestInspirationCRUD:
         assert r.data['count'] == 0
         assert r.data['results'] == []
 
+    def test_list_filter_by_source(self, authenticated_api_client, api_user):
+        src_a = Source.objects.create(user=api_user, title='Book A', source_type='book')
+        src_b = Source.objects.create(user=api_user, title='Book B', source_type='book')
+        Inspiration.objects.create(
+            user=api_user,
+            source=src_a,
+            source_title='A',
+            essence='One',
+            source_type='book',
+        )
+        Inspiration.objects.create(
+            user=api_user,
+            source=src_b,
+            source_title='B',
+            essence='Two',
+            source_type='book',
+        )
+        r = authenticated_api_client.get(
+            '/api/v1/inspirations/', {'source': src_a.pk}
+        )
+        assert r.status_code == status.HTTP_200_OK
+        assert r.data['count'] == 1
+        assert r.data['results'][0]['essence'] == 'One'
+        assert r.data['results'][0]['source'] == src_a.pk
+
     def test_create_and_retrieve(self, authenticated_api_client):
         payload = {
             'source_title': 'Test Book',

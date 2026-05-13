@@ -725,10 +725,34 @@ button.secondary:hover {
   flex: 0 0 auto;
   width: 7.5rem;
   margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
   text-align: center;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.sources-gallery-tile:hover .sources-gallery-caption {
+  color: var(--accent);
+}
+
+.sources-gallery-tile:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.sources-gallery-tile-inner {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .sources-gallery-cover-wrap {
+  display: block;
   width: 100%;
   aspect-ratio: 2 / 3;
   border-radius: 8px;
@@ -758,6 +782,7 @@ button.secondary:hover {
 }
 
 .sources-gallery-caption {
+  display: block;
   margin: 0.4rem 0 0;
   font-size: 0.8rem;
   font-weight: 600;
@@ -767,4 +792,119 @@ button.secondary:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* —— Inspirations for one source —— */
+.source-inspirations-header {
+  margin-bottom: 0.75rem;
+}
+
+.source-inspirations-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: auto;
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.source-inspirations-back-btn:hover {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+}
+
+.source-inspirations-back-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.source-inspirations-back-icon {
+  flex-shrink: 0;
+  font-size: 1.35rem;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--accent);
+  margin-top: -0.05rem;
+}
+
+.source-inspirations-back-label {
+  min-width: 0;
+}
+
+.source-inspirations-title {
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+.source-inspirations-from {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.source-inspirations-cite {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.source-inspirations-by {
+  font-weight: 500;
+}
+
+.source-inspirations-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.source-inspirations-item {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.source-inspirations-essence {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.source-inspirations-quote {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.source-inspirations-reference {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.source-inspirations-reference-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.source-inspirations-meta {
+  margin: 0;
+  font-size: 0.82rem;
 }

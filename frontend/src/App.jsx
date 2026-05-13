@@ -4,6 +4,7 @@ import { AddInspirationView } from './components/AddInspirationView.jsx'
 import { AddSourceView } from './components/AddSourceView.jsx'
 import { HamburgerNav } from './components/HamburgerNav.jsx'
 import { HomeView } from './components/HomeView.jsx'
+import { SourceInspirationsView } from './components/SourceInspirationsView.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -55,7 +56,7 @@ const emptyNewSource = {
   notes: '',
 }
 
-/** @typedef {'home' | 'addInspiration' | 'sourcesGallery' | 'addSource'} AppView */
+/** @typedef {'home' | 'addInspiration' | 'sourcesGallery' | 'sourceInspirations' | 'addSource'} AppView */
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -91,6 +92,15 @@ function App() {
   const [sourceFormMessage, setSourceFormMessage] = useState('')
   const [isbnCoverPreviewUrl, setIsbnCoverPreviewUrl] = useState('')
 
+  const [selectedSourceId, setSelectedSourceId] = useState(
+    /** @type {number | null} */ (null),
+  )
+  const [sourceInspirations, setSourceInspirations] = useState([])
+  const [sourceInspirationsLoading, setSourceInspirationsLoading] = useState(false)
+  const [sourceInspirationsError, setSourceInspirationsError] = useState('')
+  const [sourceInspirationsAuthRequired, setSourceInspirationsAuthRequired] =
+    useState(false)
+
   const loadInspirations = useCallback(async () => {
     try {
       setLoading(true)
@@ -113,6 +123,36 @@ function App() {
       setError(err instanceof Error ? err.message : 'Request failed')
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const loadInspirationsForSource = useCallback(async (sourceId) => {
+    try {
+      setSourceInspirationsLoading(true)
+      setSourceInspirationsAuthRequired(false)
+      setSourceInspirationsError('')
+      const params = new URLSearchParams({ source: String(sourceId) })
+      const response = await fetch(
+        apiUrl(`/api/v1/inspirations/?${params.toString()}`),
+        { credentials: 'include' },
+      )
+      if (response.status === 401 || response.status === 403) {
+        setSourceInspirations([])
+        setSourceInspirationsAuthRequired(true)
+        return
+      }
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`)
+      }
+      const data = await response.json()
+      setSourceInspirations(data.results ?? [])
+    } catch (err) {
+      setSourceInspirationsError(
+        err instanceof Error ? err.message : 'Request failed',
+      )
+      setSourceInspirations([])
+    } finally {
+      setSourceInspirationsLoading(false)
     }
   }, [])
 
@@ -148,6 +188,17 @@ function App() {
   }, [currentUser, loadSources])
 
   useEffect(() => {
+    if (
+      activeView !== 'sourceInspirations' ||
+      selectedSourceId == null ||
+      !currentUser
+    ) {
+      return
+    }
+    void loadInspirationsForSource(selectedSourceId)
+  }, [activeView, selectedSourceId, currentUser, loadInspirationsForSource])
+
+  useEffect(() => {
     let cancelled = false
 
     async function bootstrap() {
@@ -180,6 +231,18 @@ function App() {
   function goHome() {
     setActiveView('home')
     setNavOpen(false)
+    setSelectedSourceId(null)
+  }
+
+  function openSourceInspirations(sourceId) {
+    setSelectedSourceId(sourceId)
+    setActiveView('sourceInspirations')
+    setNavOpen(false)
+  }
+
+  function backFromSourceInspirations() {
+    setActiveView('sourcesGallery')
+    setSelectedSourceId(null)
   }
 
   function onStep1Change(event) {
@@ -564,6 +627,9 @@ function App() {
   function onNavSelect(view) {
     setActiveView(view)
     setNavOpen(false)
+    if (view !== 'sourceInspirations') {
+      setSelectedSourceId(null)
+    }
   }
 
   return (
@@ -692,6 +758,19 @@ function App() {
           sources={sources}
           sourcesLoading={sourcesLoading}
           sourcesError={sourcesError}
+          onOpenSource={openSourceInspirations}
+        />
+      )}
+
+      {activeView === 'sourceInspirations' && (
+        <SourceInspirationsView
+          source={sources.find((s) => s.id === selectedSourceId) ?? null}
+          inspirations={sourceInspirations}
+          loading={sourceInspirationsLoading}
+          error={sourceInspirationsError}
+          listAuthRequired={sourceInspirationsAuthRequired}
+          onSignInClick={() => setShowLoginForm(true)}
+          onBack={backFromSourceInspirations}
         />
       )}
 
