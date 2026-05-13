@@ -199,6 +199,176 @@ button.secondary:hover {
   box-shadow: 0 2px 12px rgba(239, 111, 46, 0.08);
 }
 
+/* Glass panel on orange — same shell as each row in My inspirations */
+.sheet-surface-card,
+.my-inspirations-list-item,
+.source-inspirations-item {
+  box-sizing: border-box;
+  padding: 1rem 1.15rem 1.1rem;
+  border: 1px solid rgba(0, 0, 0, 0.32);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.12);
+  color: #ffffff;
+}
+
+.sheet-surface-card {
+  max-width: 36rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1rem;
+}
+
+.my-inspirations-list-item,
+.source-inspirations-item {
+  margin: 0;
+}
+
+.sheet-surface-card .hint,
+.sheet-surface-card .subtitle {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.sheet-surface-card .preview-shot-comic-note {
+  color: #0a0a0a;
+  font-weight: 600;
+}
+
+.sheet-surface-card .view-panel-heading,
+.sheet-surface-card .home-view-title {
+  margin-top: 0;
+  color: #ffffff;
+  font-family: var(--font-app-brand);
+  font-size: clamp(1.35rem, 3.2vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.sheet-surface-card h2 {
+  margin-top: 0;
+  color: #ffffff;
+  font-family: var(--font-app-brand);
+  font-size: clamp(1.2rem, 2.8vw, 1.45rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.sheet-surface-card h1 {
+  margin-top: 0;
+  color: #ffffff;
+  font-family: var(--font-app-brand);
+  font-size: clamp(1.35rem, 3.2vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.sheet-surface-card .error {
+  color: #ffe8e8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.sheet-surface-card .form label {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.sheet-surface-card .form label > input:not([type='checkbox']):not([type='radio']),
+.sheet-surface-card .form label > select,
+.sheet-surface-card .form label > textarea {
+  background: rgba(255, 122, 26, 0.52);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.sheet-surface-card .form label > input::placeholder,
+.sheet-surface-card .form label > textarea::placeholder {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.sheet-surface-card .form label > select option {
+  background: var(--cream);
+  color: #fffdf8;
+}
+
+.sheet-surface-card .form label > input:focus-visible,
+.sheet-surface-card .form label > select:focus-visible,
+.sheet-surface-card .form label > textarea:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 1px;
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.sheet-surface-card .form label.checkbox-row {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.sheet-surface-card button.secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fffdf8;
+  border: 2px solid #0a0a0a;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.sheet-surface-card button.secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: #0a0a0a;
+}
+
+.sheet-surface-card button.secondary:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
+}
+
+.sheet-surface-card .form button:not(.secondary),
+.sheet-surface-card .actions button:not(.secondary),
+.sheet-surface-card .login-actions button:not(.secondary) {
+  padding: 0.55rem 0.95rem;
+  border: 2px solid #0a0a0a;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fffdf8;
+  cursor: pointer;
+  font-weight: 600;
+  font: inherit;
+}
+
+.sheet-surface-card .form button:not(.secondary):hover,
+.sheet-surface-card .actions button:not(.secondary):hover,
+.sheet-surface-card .login-actions button:not(.secondary):hover {
+  background: var(--accent-hover);
+  border-color: #0a0a0a;
+}
+
+.sheet-surface-card .form button:not(.secondary):focus-visible,
+.sheet-surface-card .actions button:not(.secondary):focus-visible,
+.sheet-surface-card .login-actions button:not(.secondary):focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
+  border-color: #0a0a0a;
+}
+
+.sheet-surface-card .sources-gallery-caption {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.sheet-surface-card .sources-gallery-placeholder-text {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sheet-surface-card .sources-gallery-tile:hover .sources-gallery-caption {
+  color: #ffffff;
+}
+
+.sheet-surface-card .sources-gallery-cover-wrap {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
 .card h3 {
   margin-top: 0;
   margin-bottom: 0.5rem;
@@ -226,9 +396,13 @@ button.secondary:hover {
   color: var(--ink);
 }
 
-.request-account-lead,
-.request-account-success {
-  color: var(--muted);
+.login-card.sheet-surface-card h2 {
+  color: #ffffff;
+}
+
+.sheet-surface-card .request-account-lead,
+.sheet-surface-card .request-account-success {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .request-account-page {
@@ -839,11 +1013,6 @@ button.secondary:hover {
   transform: scale(0.95);
 }
 
-.home-view-title {
-  margin-top: 0;
-  color: var(--ink);
-}
-
 /* —— Sources gallery —— */
 .sources-gallery-grid {
   display: flex;
@@ -927,7 +1096,8 @@ button.secondary:hover {
 }
 
 /* —— My inspirations (full library list, open on orange) —— */
-.my-inspirations-view--sheet {
+.my-inspirations-view--sheet,
+.source-inspirations-view--sheet {
   background: transparent;
   border: none;
   box-shadow: none;
@@ -950,7 +1120,8 @@ button.secondary:hover {
 }
 
 .my-inspirations-view--sheet .my-inspirations-lead,
-.my-inspirations-view--sheet .hint {
+.my-inspirations-view--sheet .hint,
+.source-inspirations-view--sheet .hint {
   color: rgba(255, 255, 255, 0.88);
 }
 
@@ -959,24 +1130,28 @@ button.secondary:hover {
   font-weight: 700;
 }
 
-.my-inspirations-view--sheet .error {
+.my-inspirations-view--sheet .error,
+.source-inspirations-view--sheet .error {
   color: #ffe8e8;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.my-inspirations-view--sheet button.secondary {
+.my-inspirations-view--sheet button.secondary,
+.source-inspirations-view--sheet button.secondary {
   background: rgba(255, 255, 255, 0.12);
   color: #fffdf8;
   border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
-.my-inspirations-view--sheet button.secondary:hover {
+.my-inspirations-view--sheet button.secondary:hover,
+.source-inspirations-view--sheet button.secondary:hover {
   background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.8);
 }
 
-.my-inspirations-view--sheet button.secondary:focus-visible {
+.my-inspirations-view--sheet button.secondary:focus-visible,
+.source-inspirations-view--sheet button.secondary:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.95);
   outline-offset: 2px;
 }
@@ -1015,14 +1190,14 @@ button.secondary:hover {
   width: 100%;
   box-sizing: border-box;
   padding: 0.55rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.42);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.12);
-  color: #fffdf8;
+  background: rgba(255, 122, 26, 0.52);
+  color: #ffffff;
   font: inherit;
   font-size: 0.95rem;
   font-weight: 500;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .my-inspirations-search-input::placeholder {
@@ -1063,19 +1238,19 @@ button.secondary:hover {
 .my-inspirations-toolbar-select {
   min-width: 12rem;
   padding: 0.45rem 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.42);
   border-radius: 8px;
-  background: var(--accent);
-  color: #fffdf8;
+  background: rgba(255, 122, 26, 0.52);
+  color: #ffffff;
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .my-inspirations-toolbar-select:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: rgba(255, 122, 26, 0.62);
   border-color: rgba(255, 255, 255, 0.55);
 }
 
@@ -1085,7 +1260,7 @@ button.secondary:hover {
 }
 
 .my-inspirations-toolbar-select option {
-  background: var(--accent);
+  background: var(--cream);
   color: #fffdf8;
   font-weight: 600;
 }
@@ -1137,7 +1312,7 @@ button.secondary:hover {
   margin: 0;
   min-width: 5.75rem;
   padding: 0.55rem 0.95rem;
-  border: 1px solid var(--accent);
+  border: 2px solid #0a0a0a;
   border-radius: 8px;
   background: var(--accent);
   color: #fffdf8;
@@ -1151,7 +1326,7 @@ button.secondary:hover {
 
 .my-inspirations-pagination-btn:hover:not(:disabled) {
   background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  border-color: #0a0a0a;
 }
 
 .my-inspirations-pagination-btn:focus-visible {
@@ -1167,17 +1342,6 @@ button.secondary:hover {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
-}
-
-.my-inspirations-list-item {
-  margin: 0;
-  padding: 1rem 1.15rem 1.1rem;
-  border: 1px solid rgba(0, 0, 0, 0.32);
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.07);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .my-inspirations-item-essence {
@@ -1498,24 +1662,26 @@ button.secondary:hover {
   min-width: 0;
 }
 
-.source-inspirations-title {
-  font-size: 1.15rem;
-  line-height: 1.35;
-}
-
-.source-inspirations-from {
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.source-inspirations-cite {
-  font-style: normal;
+.source-inspirations-view--sheet .view-panel-heading,
+.source-inspirations-view--sheet .source-inspirations-title {
+  color: #ffffff;
+  font-family: var(--font-app-brand);
+  font-size: clamp(1.15rem, 2.8vw, 1.45rem);
   font-weight: 700;
-  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
 }
 
-.source-inspirations-by {
-  font-weight: 500;
+.source-inspirations-view--sheet .source-inspirations-from {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.source-inspirations-view--sheet .source-inspirations-cite {
+  color: #ffffff;
+}
+
+.source-inspirations-view--sheet .source-inspirations-by {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .source-inspirations-list {
@@ -1526,41 +1692,34 @@ button.secondary:hover {
   gap: 0.75rem;
 }
 
-.source-inspirations-item {
-  margin: 0;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  background: var(--surface-muted);
+.source-inspirations-item .source-inspirations-essence {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-app-brand);
+  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #ffffff;
 }
 
-.source-inspirations-essence {
-  margin: 0 0 0.35rem;
-  font-weight: 600;
-  color: var(--ink);
-  line-height: 1.4;
-}
-
-.source-inspirations-quote {
+.source-inspirations-item .source-inspirations-quote,
+.source-inspirations-item .source-inspirations-reference,
+.source-inspirations-item .hint {
   margin: 0 0 0.35rem;
   font-size: 0.88rem;
   line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
 }
 
-.source-inspirations-reference {
-  margin: 0 0 0.35rem;
-  font-size: 0.88rem;
-  line-height: 1.45;
-}
-
-.source-inspirations-reference-label {
+.source-inspirations-item .source-inspirations-reference-label {
   font-weight: 600;
-  color: var(--ink);
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.source-inspirations-meta {
+.source-inspirations-item .source-inspirations-meta {
   margin: 0;
   font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 /* —— Screenshot crop (pre-OCR) —— */

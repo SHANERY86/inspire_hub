@@ -13,14 +13,14 @@ export function AddSourceView({
 }) {
   if (!currentUser) {
     return (
-      <section className="card view-panel add-source-view">
+      <section className="view-panel add-source-view sheet-surface-card">
         <p className="hint">Sign in to add sources.</p>
       </section>
     )
   }
 
   return (
-    <section className="card view-panel add-source-view">
+    <section className="view-panel add-source-view sheet-surface-card">
       <h2 className="view-panel-heading">Add source</h2>
       <p className="hint">
         Track books or other works. <strong>Look up ISBN</strong> fills title,

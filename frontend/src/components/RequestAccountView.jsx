@@ -50,7 +50,7 @@ export function RequestAccountView({ onSubmitRequest, onCancel, isPageLayout = f
 
   if (done) {
     return (
-      <section className="card login-card request-account-card">
+      <section className="login-card request-account-card sheet-surface-card">
         {isPageLayout ? (
           <h1 className="request-account-page-title">Request sent</h1>
         ) : (
@@ -60,7 +60,7 @@ export function RequestAccountView({ onSubmitRequest, onCancel, isPageLayout = f
           Thanks — your details were submitted. The site owner will follow up by email when your
           account is ready.
         </p>
-        <div className="login-actions">
+        <div className="login-actions actions">
           <button type="button" onClick={onCancel}>
             Back to home
           </button>
@@ -81,7 +81,7 @@ export function RequestAccountView({ onSubmitRequest, onCancel, isPageLayout = f
           </p>
         </>
       ) : null}
-      <section className={`card login-card request-account-card${isPageLayout ? ' request-account-card--page' : ''}`}>
+      <section className={`login-card request-account-card sheet-surface-card${isPageLayout ? ' request-account-card--page' : ''}`}>
         {!isPageLayout ? <h2>Request an account</h2> : null}
         {!isPageLayout ? (
           <p className="hint request-account-lead">

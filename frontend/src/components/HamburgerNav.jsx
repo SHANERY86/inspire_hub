@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
 /**
- * Top-right menu: Home, sections, and sign in / account.
+ * Top-right menu: Home; when signed in, library sections + log out; when guest, request account + sign in.
  * `onSelect` receives view id ('home' | 'myInspirations' | …); caller closes menu.
  */
 export function HamburgerNav({
@@ -58,60 +58,49 @@ export function HamburgerNav({
                   Home
                 </button>
               </li>
-              <li>
-                <button
-                  type="button"
-                  className={`nav-menu-item${activeView === 'myInspirations' ? ' is-active' : ''}`}
-                  onClick={() => onSelect('myInspirations')}
-                >
-                  My inspirations
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className={`nav-menu-item${activeView === 'addInspiration' ? ' is-active' : ''}`}
-                  onClick={() => onSelect('addInspiration')}
-                >
-                  Add inspiration
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className={`nav-menu-item${
-                    activeView === 'sourcesGallery' || activeView === 'sourceInspirations'
-                      ? ' is-active'
-                      : ''
-                  }`}
-                  onClick={() => onSelect('sourcesGallery')}
-                >
-                  Inspiration sources
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className={`nav-menu-item${activeView === 'addSource' ? ' is-active' : ''}`}
-                  onClick={() => onSelect('addSource')}
-                >
-                  Add source
-                </button>
-              </li>
-              <li className="nav-menu-divider" role="presentation" />
-              {!authLoading && !currentUser && (
-                <li>
-                  <button
-                    type="button"
-                    className={`nav-menu-item${activeView === 'requestAccount' ? ' is-active' : ''}`}
-                    onClick={() => onSelect('requestAccount')}
-                  >
-                    Request an account
-                  </button>
-                </li>
-              )}
               {!authLoading && currentUser && (
                 <>
+                  <li>
+                    <button
+                      type="button"
+                      className={`nav-menu-item${activeView === 'myInspirations' ? ' is-active' : ''}`}
+                      onClick={() => onSelect('myInspirations')}
+                    >
+                      My inspirations
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      className={`nav-menu-item${activeView === 'addInspiration' ? ' is-active' : ''}`}
+                      onClick={() => onSelect('addInspiration')}
+                    >
+                      Add inspiration
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      className={`nav-menu-item${
+                        activeView === 'sourcesGallery' || activeView === 'sourceInspirations'
+                          ? ' is-active'
+                          : ''
+                      }`}
+                      onClick={() => onSelect('sourcesGallery')}
+                    >
+                      Inspiration sources
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      className={`nav-menu-item${activeView === 'addSource' ? ' is-active' : ''}`}
+                      onClick={() => onSelect('addSource')}
+                    >
+                      Add source
+                    </button>
+                  </li>
+                  <li className="nav-menu-divider" role="presentation" />
                   <li className="nav-menu-meta">
                     Signed in as <strong>{currentUser.username}</strong>
                   </li>
@@ -131,18 +120,29 @@ export function HamburgerNav({
                 </>
               )}
               {!authLoading && !currentUser && (
-                <li>
-                  <button
-                    type="button"
-                    className="nav-menu-item"
-                    onClick={() => {
-                      onClose()
-                      onSignIn()
-                    }}
-                  >
-                    Sign in
-                  </button>
-                </li>
+                <>
+                  <li>
+                    <button
+                      type="button"
+                      className={`nav-menu-item${activeView === 'requestAccount' ? ' is-active' : ''}`}
+                      onClick={() => onSelect('requestAccount')}
+                    >
+                      Request an account
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      className="nav-menu-item"
+                      onClick={() => {
+                        onClose()
+                        onSignIn()
+                      }}
+                    >
+                      Sign in
+                    </button>
+                  </li>
+                </>
               )}
             </ul>
           </nav>

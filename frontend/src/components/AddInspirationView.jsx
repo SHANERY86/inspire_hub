@@ -23,7 +23,7 @@ export function AddInspirationView({
   formError,
 }) {
   return (
-    <section className="card view-panel add-inspiration-view">
+    <section className="view-panel add-inspiration-view sheet-surface-card">
       <h2 className="view-panel-heading">
         {step === 1 ? '1 · Upload & details' : '2 · Preview & save'}
       </h2>

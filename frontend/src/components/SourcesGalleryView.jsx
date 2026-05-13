@@ -41,7 +41,7 @@ function SourceCoverTile({ source, onOpen }) {
 export function SourcesGalleryView({ sources, sourcesLoading, sourcesError, onOpenSource }) {
   if (sourcesLoading) {
     return (
-      <section className="card view-panel sources-gallery-view">
+      <section className="view-panel sources-gallery-view sheet-surface-card">
         <p className="hint">Loading sources…</p>
       </section>
     )
@@ -49,7 +49,7 @@ export function SourcesGalleryView({ sources, sourcesLoading, sourcesError, onOp
 
   if (sourcesError) {
     return (
-      <section className="card view-panel sources-gallery-view">
+      <section className="view-panel sources-gallery-view sheet-surface-card">
         <p className="error">{sourcesError}</p>
       </section>
     )
@@ -57,7 +57,7 @@ export function SourcesGalleryView({ sources, sourcesLoading, sourcesError, onOp
 
   if (!sources.length) {
     return (
-      <section className="card view-panel sources-gallery-view">
+      <section className="view-panel sources-gallery-view sheet-surface-card">
         <h2 className="view-panel-heading">Inspiration sources</h2>
         <p className="hint">No saved sources yet. Use the menu to add one.</p>
       </section>
@@ -65,7 +65,7 @@ export function SourcesGalleryView({ sources, sourcesLoading, sourcesError, onOp
   }
 
   return (
-    <section className="card view-panel sources-gallery-view">
+    <section className="view-panel sources-gallery-view sheet-surface-card">
       <h2 className="view-panel-heading">Inspiration sources</h2>
       <div className="sources-gallery-grid">
         {sources.map((s) => (

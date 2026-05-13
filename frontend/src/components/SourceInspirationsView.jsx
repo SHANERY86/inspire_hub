@@ -24,7 +24,7 @@ export function SourceInspirationsView({
 }) {
   if (listAuthRequired) {
     return (
-      <section className="card view-panel source-inspirations-view">
+      <section className="view-panel source-inspirations-view sheet-surface-card">
         <p className="hint">
           Sign in to see inspirations for this source.{' '}
           <button type="button" className="secondary" onClick={onSignInClick}>
@@ -37,7 +37,7 @@ export function SourceInspirationsView({
 
   if (!source) {
     return (
-      <section className="card view-panel source-inspirations-view">
+      <section className="view-panel source-inspirations-view sheet-surface-card">
         <p className="error">Source not found.</p>
         <button
           type="button"
@@ -58,7 +58,7 @@ export function SourceInspirationsView({
   const author = (source.author || '').trim()
 
   return (
-    <section className="card view-panel source-inspirations-view">
+    <section className="view-panel source-inspirations-view source-inspirations-view--sheet">
       <div className="source-inspirations-header">
         <button
           type="button"
@@ -116,7 +116,7 @@ export function SourceInspirationsView({
                     {reference}
                   </p>
                 ) : null}
-                <p className="source-inspirations-meta hint">
+                <p className="source-inspirations-meta">
                   {formatInspirationDate(i.date)}
                   {i.source_type ? ` · ${i.source_type}` : ''}
                 </p>

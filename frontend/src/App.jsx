@@ -919,7 +919,7 @@ function App() {
       ) : null}
 
       {!authLoading && !currentUser && showLoginForm && (
-        <section className="card login-card">
+        <section className="login-card sheet-surface-card">
           <h2>Sign in</h2>
           <form className="form" onSubmit={onLoginSubmit}>
             <label>

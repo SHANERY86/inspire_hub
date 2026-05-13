@@ -235,7 +235,7 @@ export function HomeView({
 
   if (loading) {
     return (
-      <section className="card view-panel home-view">
+      <section className="view-panel home-view sheet-surface-card">
         <p className="hint">Loading inspirations…</p>
       </section>
     )
@@ -243,7 +243,7 @@ export function HomeView({
 
   if (error) {
     return (
-      <section className="card view-panel home-view">
+      <section className="view-panel home-view sheet-surface-card">
         <p className="error">Error: {error}</p>
       </section>
     )
@@ -251,7 +251,7 @@ export function HomeView({
 
   if (listAuthRequired) {
     return (
-      <section className="card view-panel home-view">
+      <section className="view-panel home-view sheet-surface-card">
         <p className="hint">
           Log in to see inspirations from your library.{' '}
           <button type="button" className="secondary" onClick={onSignInClick}>
@@ -264,7 +264,7 @@ export function HomeView({
 
   if (!inspirations.length) {
     return (
-      <section className="card view-panel home-view">
+      <section className="view-panel home-view sheet-surface-card">
         <h2 className="home-view-title">Welcome</h2>
         {guestHome ? (
           <p className="hint">
@@ -286,7 +286,7 @@ export function HomeView({
 
   if (captures.length === 0) {
     return (
-      <section className="card view-panel home-view">
+      <section className="view-panel home-view sheet-surface-card">
         <p className="hint">
           {guestHome
             ? 'No public inspirations have text or images for the spotlight yet. Add a summary, captured text, your thoughts, or a panel image when you sign in.'
