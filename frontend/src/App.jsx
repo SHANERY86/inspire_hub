@@ -167,6 +167,63 @@ function App() {
     }
   }, [])
 
+  const patchInspiration = useCallback(
+    async (id, body) => {
+      const csrf = await fetchSessionCsrf()
+      const response = await fetch(apiUrl(`/api/v1/inspirations/${id}/`), {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf,
+        },
+        body: JSON.stringify(body),
+      })
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Sign in again to save changes.')
+        }
+        const errBody = await response.json().catch(() => ({}))
+        let msg =
+          typeof errBody.detail === 'string'
+            ? errBody.detail
+            : `Update failed (${response.status}).`
+        const firstField = Object.values(errBody).find((v) => Array.isArray(v))
+        if (firstField?.[0]) msg = String(firstField[0])
+        throw new Error(msg)
+      }
+      await loadInspirations()
+    },
+    [loadInspirations],
+  )
+
+  const deleteInspirationById = useCallback(
+    async (id) => {
+      const csrf = await fetchSessionCsrf()
+      const response = await fetch(apiUrl(`/api/v1/inspirations/${id}/`), {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'X-CSRFToken': csrf,
+        },
+      })
+      if (response.status === 204) {
+        await loadInspirations()
+        return
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Sign in again to delete.')
+      }
+      const errBody = await response.json().catch(() => ({}))
+      const msg =
+        typeof errBody.detail === 'string'
+          ? errBody.detail
+          : `Delete failed (${response.status}).`
+      throw new Error(msg)
+    },
+    [loadInspirations],
+  )
+
   const loadSources = useCallback(async () => {
     setSourcesLoading(true)
     setSourcesError('')
@@ -785,6 +842,11 @@ function App() {
           listAuthRequired={listAuthRequired}
           onSignInClick={() => setShowLoginForm(true)}
           inspirations={inspirations}
+          currentUser={currentUser}
+          sources={sources}
+          sourcesLoading={sourcesLoading}
+          onPatchInspiration={patchInspiration}
+          onDeleteInspiration={deleteInspirationById}
         />
       )}
 
