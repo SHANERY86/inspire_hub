@@ -9,17 +9,25 @@ from .models import Inspiration, Screenshot
 
 
 def commit_inspiration_with_screenshots(
-    form_data, screenshot_rows, *, user, source=None, on_warning=None
+    form_data,
+    screenshot_rows,
+    *,
+    user,
+    source=None,
+    on_warning=None,
+    comic_panel=False,
 ):
     """
     Create an Inspiration and optional Screenshot rows.
 
     form_data: dict with source_title, essence, user_thoughts, source_type, reference.
     screenshot_rows: list of dicts with keys:
-      keep (bool), extracted_text (str), image_base64 (optional str), filename (optional str).
+      extracted_text (str), image_base64 (optional str), filename (optional str).
 
     Quote is built from every row whose extracted_text is non-empty (matches template flow).
-    Screenshot files are saved only when keep is true, text is non-empty, and image decodes.
+    When comic_panel is False, image files are not stored — only the joined extracted text
+    becomes inspiration.quote. When comic_panel is True, every row with decodable image
+    data is stored as a Screenshot; extracted_text may be empty (image stored as-is).
 
     user: owner of the new Inspiration (required).
 
@@ -56,52 +64,42 @@ def commit_inspiration_with_screenshots(
             source=source,
         )
 
-        for idx, row in enumerate(screenshot_rows):
-            if not row.get('keep'):
-                continue
+        if comic_panel:
+            for idx, row in enumerate(screenshot_rows):
+                edited_text = row.get('extracted_text') or ''
+                b64 = row.get('image_base64')
+                filename = row.get('filename') or f'screenshot_{idx}.jpg'
 
-            edited_text = row.get('extracted_text') or ''
-            b64 = row.get('image_base64')
-            filename = row.get('filename') or f'screenshot_{idx}.jpg'
+                if not b64:
+                    if on_warning:
+                        on_warning(
+                            idx,
+                            'had no image data and was not saved.',
+                        )
+                    continue
 
-            if not b64:
-                if on_warning:
-                    on_warning(
-                        idx,
-                        'had no image data and was not saved.',
-                    )
-                continue
+                try:
+                    image_data = base64.b64decode(b64, validate=True)
+                except (binascii.Error, ValueError):
+                    if on_warning:
+                        on_warning(
+                            idx,
+                            'could not be decoded and was not saved.',
+                        )
+                    continue
 
-            if not edited_text.strip():
-                if on_warning:
-                    on_warning(
-                        idx,
-                        'had empty extracted text and was not saved.',
-                    )
-                continue
+                if not image_data:
+                    if on_warning:
+                        on_warning(
+                            idx,
+                            'was empty and was not saved.',
+                        )
+                    continue
 
-            try:
-                image_data = base64.b64decode(b64, validate=True)
-            except (binascii.Error, ValueError):
-                if on_warning:
-                    on_warning(
-                        idx,
-                        'could not be decoded and was not saved.',
-                    )
-                continue
-
-            if not image_data:
-                if on_warning:
-                    on_warning(
-                        idx,
-                        'was empty and was not saved.',
-                    )
-                continue
-
-            Screenshot.objects.create(
-                inspiration=inspiration,
-                image=ContentFile(image_data, name=filename),
-                extracted_text=edited_text,
-            )
+                Screenshot.objects.create(
+                    inspiration=inspiration,
+                    image=ContentFile(image_data, name=filename),
+                    extracted_text=edited_text.strip() if edited_text.strip() else '',
+                )
 
     return inspiration

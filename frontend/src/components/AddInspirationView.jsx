@@ -18,7 +18,6 @@ export function AddInspirationView({
   onDraftFormChange,
   draftScreenshots,
   onScreenshotTextChange,
-  onScreenshotKeepChange,
   onCommitSubmit,
   goBackToStep1,
   formError,
@@ -103,6 +102,16 @@ export function AddInspirationView({
             />
           </label>
 
+          <label className="checkbox-row comic-panel-checkbox">
+            <input
+              type="checkbox"
+              name="is_comic_panel"
+              checked={Boolean(step1Form.is_comic_panel)}
+              onChange={onStep1Change}
+            />
+            Save image only
+          </label>
+
           <div className="screenshot-block" role="group" aria-label="Screenshots">
             <p className="screenshot-block-label">
               Screenshots (optional if you added thoughts)
@@ -136,8 +145,10 @@ export function AddInspirationView({
               </label>
             </div>
             <p className="hint">
-              After you choose images, you can zoom and frame the area to send to OCR (or use the full
-              image). Take photo adds each shot. Library picker replaces the current list.
+              {step1Form.is_comic_panel
+                ? 'You can still crop and frame each image before upload. No text recognition runs for comic panels.'
+                : 'After you choose images, you can zoom and frame the area to send to OCR (or use the full image). '}
+              Take photo adds each shot. Library picker replaces the current list.
             </p>
           </div>
           {screenshotFiles.length > 0 && (
@@ -145,7 +156,11 @@ export function AddInspirationView({
           )}
 
           <button type="submit" disabled={submitting}>
-            {submitting ? 'Running OCR…' : 'Continue to preview'}
+            {submitting
+              ? step1Form.is_comic_panel
+                ? 'Preparing…'
+                : 'Running OCR…'
+              : 'Continue to preview'}
           </button>
         </form>
       )}
@@ -153,8 +168,9 @@ export function AddInspirationView({
       {step === 2 && draftForm && (
         <form className="form" onSubmit={onCommitSubmit}>
           <p className="hint">
-            Confirm title, essence or summary, and source type before saving
-            (required).
+            {draftForm.is_comic_panel
+              ? 'Confirm details before saving. Every image below is stored as-is (no OCR).'
+              : 'Confirm title, essence or summary, and source type before saving (required). Review captured text below — only the text is saved with your inspiration, not the images.'}
           </p>
 
           <label>
@@ -242,9 +258,9 @@ export function AddInspirationView({
             </label>
           )}
 
-          {draftScreenshots.length > 0 && (
+          {draftScreenshots.length > 0 && draftForm.is_comic_panel && (
             <div className="preview-shots">
-              <h3>Screenshots</h3>
+              <h3>Comic panels</h3>
               {draftScreenshots.map((s, index) => (
                 <div key={`${s.filename}-${index}`} className="preview-shot">
                   <img
@@ -252,24 +268,27 @@ export function AddInspirationView({
                     alt={s.filename}
                     className="preview-thumb"
                   />
-                  <label className="checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={s.keep}
-                      onChange={(e) =>
-                        onScreenshotKeepChange(index, e.target.checked)
-                      }
-                    />
-                    Keep this image when saving
-                  </label>
+                  <p className="hint preview-shot-comic-note">
+                    No OCR — this image is saved to your library as-is.
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {draftScreenshots.length > 0 && !draftForm.is_comic_panel && (
+            <div className="preview-shots">
+              <h3>Captured text</h3>
+              {draftScreenshots.map((s, index) => (
+                <div key={`${s.filename}-${index}`} className="preview-shot preview-shot--text-only">
+                  <p className="preview-shot-filename hint">{s.filename}</p>
                   <label>
-                    Extracted text (from OCR — use list below to set final text)
+                    Extracted text (edit or use pick list)
                     <textarea
-                      className="ocr-textarea ocr-textarea-readonly"
+                      className="ocr-textarea"
                       value={s.extracted_text ?? ''}
-                      readOnly
+                      onChange={(e) => onScreenshotTextChange(index, e.target.value)}
                       rows={5}
-                      aria-readonly="true"
                     />
                   </label>
                   <ExtractedTextPickerPanel

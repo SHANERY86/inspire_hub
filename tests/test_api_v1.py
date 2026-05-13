@@ -1,3 +1,4 @@
+import base64
 import io
 
 import pytest
@@ -13,6 +14,12 @@ def _tiny_jpeg_upload(name='test.jpg'):
     Image.new('RGB', (1, 1), color=(255, 0, 0)).save(buf, format='JPEG')
     buf.seek(0)
     return SimpleUploadedFile(name, buf.read(), content_type='image/jpeg')
+
+
+def _tiny_jpeg_b64():
+    buf = io.BytesIO()
+    Image.new('RGB', (1, 1), color=(0, 0, 200)).save(buf, format='JPEG')
+    return base64.b64encode(buf.getvalue()).decode('ascii')
 
 
 @pytest.mark.django_db
@@ -301,6 +308,28 @@ class TestScreenshotCRUD:
 
 
 @pytest.mark.django_db
+class TestInspirationDraftPreview:
+    def test_preview_comic_skips_ocr(self, authenticated_api_client, settings):
+        settings.OCR_SPACE_API_KEY = ''
+        img = _tiny_jpeg_upload()
+        r = authenticated_api_client.post(
+            '/api/v1/inspiration-drafts/preview/',
+            {
+                'source_title': 'T',
+                'essence': 'E',
+                'source_type': 'book',
+                'user_thoughts': 'caption',
+                'comic_panel': '1',
+                'screenshots': img,
+            },
+            format='multipart',
+        )
+        assert r.status_code == status.HTTP_200_OK
+        assert r.data['form_data']['is_comic_panel'] is True
+        assert r.data['screenshots'][0]['extracted_text'] == ''
+
+
+@pytest.mark.django_db
 class TestInspirationDraftCommit:
     def test_commit_links_optional_source(self, authenticated_api_client, api_user):
         src = Source.objects.create(
@@ -346,3 +375,61 @@ class TestInspirationDraftCommit:
             format='json',
         )
         assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_commit_comic_panel_saves_screenshot_without_extracted_text(
+        self, authenticated_api_client, api_user
+    ):
+        payload = {
+            'source_title': 'My comic',
+            'essence': 'Ch1',
+            'user_thoughts': '',
+            'source_type': 'book',
+            'reference': '',
+            'is_comic_panel': True,
+            'screenshots': [
+                {
+                    'image_base64': _tiny_jpeg_b64(),
+                    'filename': 'panel.jpg',
+                    'extracted_text': '',
+                }
+            ],
+        }
+        r = authenticated_api_client.post(
+            '/api/v1/inspiration-drafts/commit/',
+            payload,
+            format='json',
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        ins = Inspiration.objects.get(pk=r.data['id'])
+        assert ins.quote in (None, '')
+        assert Screenshot.objects.filter(inspiration=ins).count() == 1
+        shot = Screenshot.objects.get(inspiration=ins)
+        assert (shot.extracted_text or '').strip() == ''
+
+    def test_commit_ocr_saves_quote_only_no_screenshot_rows(
+        self, authenticated_api_client, api_user
+    ):
+        payload = {
+            'source_title': 'Book',
+            'essence': 'Ch2',
+            'user_thoughts': '',
+            'source_type': 'book',
+            'reference': '',
+            'is_comic_panel': False,
+            'screenshots': [
+                {
+                    'image_base64': _tiny_jpeg_b64(),
+                    'filename': 'page.jpg',
+                    'extracted_text': 'Highlighted passage text.',
+                }
+            ],
+        }
+        r = authenticated_api_client.post(
+            '/api/v1/inspiration-drafts/commit/',
+            payload,
+            format='json',
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        ins = Inspiration.objects.get(pk=r.data['id'])
+        assert ins.quote == 'Highlighted passage text.'
+        assert Screenshot.objects.filter(inspiration=ins).count() == 0

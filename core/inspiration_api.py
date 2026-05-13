@@ -13,6 +13,12 @@ from .models import Source
 from .serializers import InspirationDraftCommitSerializer, InspirationSerializer
 
 
+def _post_bool(val):
+    if val is None:
+        return False
+    return str(val).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
 class InspirationDraftPreviewAPIView(APIView):
     """
     POST multipart: same fields as the step-1 inspiration form — form fields + screenshots[] files.
@@ -29,6 +35,7 @@ class InspirationDraftPreviewAPIView(APIView):
             sid = int(raw_source)
             if Source.objects.filter(pk=sid, user=request.user).exists():
                 source_id = sid
+        comic_panel = _post_bool(request.POST.get('comic_panel'))
         form_data = {
             'source_title': request.POST.get('source_title', ''),
             'essence': request.POST.get('essence', ''),
@@ -36,6 +43,7 @@ class InspirationDraftPreviewAPIView(APIView):
             'source_type': request.POST.get('source_type', ''),
             'reference': request.POST.get('reference', ''),
             'source': source_id,
+            'is_comic_panel': comic_panel,
         }
         screenshots = request.FILES.getlist('screenshots')
 
@@ -49,7 +57,10 @@ class InspirationDraftPreviewAPIView(APIView):
 
         screenshot_data = []
         for uploaded_file in screenshots:
-            extracted_text = extract_text_from_upload(uploaded_file)
+            if comic_panel:
+                extracted_text = ''
+            else:
+                extracted_text = extract_text_from_upload(uploaded_file)
             image_base64 = uploaded_file_to_base64(uploaded_file)
             screenshot_data.append(
                 {
@@ -93,6 +104,7 @@ class InspirationDraftCommitAPIView(APIView):
         }
         screenshot_list = payload.get('screenshots') or []
         linked_source = payload.get('source')
+        comic_panel = bool(payload.get('is_comic_panel'))
 
         if not preview_session_valid(form_data, screenshot_list):
             return Response(
@@ -119,6 +131,7 @@ class InspirationDraftCommitAPIView(APIView):
                 user=request.user,
                 source=linked_source,
                 on_warning=None,
+                comic_panel=comic_panel,
             )
         except DatabaseError:
             return Response(

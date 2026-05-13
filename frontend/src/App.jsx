@@ -47,6 +47,7 @@ const emptyStep1 = {
   source_type: 'book',
   reference: '',
   source: null,
+  is_comic_panel: false,
 }
 
 const emptyNewSource = {
@@ -271,7 +272,11 @@ function App() {
   }
 
   function onStep1Change(event) {
-    const { name, value } = event.target
+    const { name, value, type, checked } = event.target
+    if (type === 'checkbox' && name === 'is_comic_panel') {
+      setStep1Form((prev) => ({ ...prev, is_comic_panel: checked }))
+      return
+    }
     if (name === 'source') {
       const newSourceId = value === '' ? null : Number(value)
       setStep1Form((prev) => {
@@ -346,6 +351,7 @@ function App() {
       if (step1Form.source != null) {
         fd.append('source', String(step1Form.source))
       }
+      fd.append('comic_panel', step1Form.is_comic_panel ? '1' : '0')
       for (const file of screenshotFiles) {
         fd.append('screenshots', file)
       }
@@ -368,13 +374,12 @@ function App() {
       }
 
       const data = await response.json()
-      setDraftForm(data.form_data)
-      setDraftScreenshots(
-        (data.screenshots ?? []).map((s) => ({
-          ...s,
-          keep: true,
-        })),
-      )
+      const formData = data.form_data ?? {}
+      setDraftForm({
+        ...formData,
+        is_comic_panel: Boolean(formData.is_comic_panel),
+      })
+      setDraftScreenshots(data.screenshots ?? [])
       setStep(2)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Preview request failed')
@@ -407,12 +412,6 @@ function App() {
   function onScreenshotTextChange(index, extracted_text) {
     setDraftScreenshots((prev) =>
       prev.map((s, i) => (i === index ? { ...s, extracted_text } : s)),
-    )
-  }
-
-  function onScreenshotKeepChange(index, keep) {
-    setDraftScreenshots((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, keep } : s)),
     )
   }
 
@@ -578,8 +577,8 @@ function App() {
         source_type: draftForm.source_type,
         reference: draftForm.reference ?? '',
         source: draftForm.source ?? null,
+        is_comic_panel: Boolean(draftForm.is_comic_panel),
         screenshots: draftScreenshots.map((s) => ({
-          keep: s.keep,
           image_base64: s.image_base64,
           filename: s.filename,
           extracted_text: s.extracted_text ?? '',
@@ -796,7 +795,6 @@ function App() {
           onDraftFormChange={onDraftFormChange}
           draftScreenshots={draftScreenshots}
           onScreenshotTextChange={onScreenshotTextChange}
-          onScreenshotKeepChange={onScreenshotKeepChange}
           onCommitSubmit={onCommitSubmit}
           goBackToStep1={goBackToStep1}
           formError={formError}

@@ -153,6 +153,7 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
     user_thoughts = serializers.CharField(allow_blank=True, required=False, default='')
     source_type = serializers.CharField()
     reference = serializers.CharField(allow_blank=True, required=False, default='')
+    is_comic_panel = serializers.BooleanField(required=False, default=False)
     source = serializers.PrimaryKeyRelatedField(
         queryset=Source.objects.none(),
         allow_null=True,
