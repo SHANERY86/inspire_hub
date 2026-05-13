@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 function looksLikeSentenceStart(fragment) {
   const t = fragment.trimStart()
@@ -108,17 +108,28 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
     segmentTextForPickerRaw(text).segments.map(() => false),
   )
 
-  useEffect(() => {
-    setTrimEdges(false)
-    setChecked(segmentTextForPickerRaw(text).segments.map(() => false))
-  }, [text])
+  const prevTextRef = useRef(text)
 
   useEffect(() => {
-    const segs = (
-      trimEdges ? segmentTextForPickerTrimmed(text) : segmentTextForPickerRaw(text)
-    ).segments
-    setChecked(segs.map(() => false))
-  }, [trimEdges])
+    const textChanged = prevTextRef.current !== text
+    prevTextRef.current = text
+
+    if (textChanged) {
+      setTrimEdges(false)
+      setChecked(segmentTextForPickerRaw(text).segments.map(() => false))
+      return
+    }
+
+    setChecked((prev) => {
+      const segs = (
+        trimEdges ? segmentTextForPickerTrimmed(text) : segmentTextForPickerRaw(text)
+      ).segments
+      if (prev.length === segs.length) return prev
+      const next = prev.slice(0, segs.length)
+      while (next.length < segs.length) next.push(false)
+      return next
+    })
+  }, [text, trimEdges])
 
   function toggleRow(i) {
     setChecked((prev) => prev.map((v, j) => (j === i ? !v : v)))

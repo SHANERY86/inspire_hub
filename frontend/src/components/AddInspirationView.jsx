@@ -61,7 +61,7 @@ export function AddInspirationView({
           )}
 
           <label>
-            Essence
+            Essence or Summary
             <input
               name="essence"
               value={step1Form.essence}
@@ -152,7 +152,8 @@ export function AddInspirationView({
       {step === 2 && draftForm && (
         <form className="form" onSubmit={onCommitSubmit}>
           <p className="hint">
-            Confirm title, essence, and source type before saving (required).
+            Confirm title, essence or summary, and source type before saving
+            (required).
           </p>
 
           <label>
@@ -166,7 +167,7 @@ export function AddInspirationView({
           </label>
 
           <label>
-            Essence
+            Essence or Summary
             <input
               name="essence"
               value={draftForm.essence}
