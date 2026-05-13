@@ -908,3 +908,109 @@ button.secondary:hover {
   margin: 0;
   font-size: 0.82rem;
 }
+
+/* —— Screenshot crop (pre-OCR) —— */
+.screenshot-crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(44, 30, 24, 0.45);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.screenshot-crop-dialog {
+  width: min(100%, 28rem);
+  max-height: min(92vh, 40rem);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1rem 1.1rem;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(44, 30, 24, 0.18);
+}
+
+.screenshot-crop-heading {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+
+.screenshot-crop-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.screenshot-crop-stage {
+  position: relative;
+  width: 100%;
+  height: min(42vh, 320px);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1410;
+  border: 1px solid var(--border-soft);
+}
+
+.screenshot-crop-stage .reactEasyCrop_Container {
+  border-radius: 8px;
+}
+
+.screenshot-crop-zoom-label {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.65rem 0 0;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.screenshot-crop-zoom-label input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.screenshot-crop-aspect-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.screenshot-crop-aspect-ends {
+  display: flex;
+  gap: 1.25rem;
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.screenshot-crop-aspect-ends .hint {
+  margin: 0;
+}
+
+.screenshot-crop-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+}
+
+.screenshot-crop-actions {
+  margin-top: 0.85rem;
+  justify-content: flex-start;
+}
+
+.screenshot-crop-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.screenshot-crop-actions button.secondary:disabled {
+  opacity: 0.55;
+}

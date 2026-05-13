@@ -4,6 +4,7 @@ import { AddInspirationView } from './components/AddInspirationView.jsx'
 import { AddSourceView } from './components/AddSourceView.jsx'
 import { HamburgerNav } from './components/HamburgerNav.jsx'
 import { HomeView } from './components/HomeView.jsx'
+import { ScreenshotCropModal } from './components/ScreenshotCropModal.jsx'
 import { SourceInspirationsView } from './components/SourceInspirationsView.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
 
@@ -91,6 +92,14 @@ function App() {
   const [sourceFormBusy, setSourceFormBusy] = useState(false)
   const [sourceFormMessage, setSourceFormMessage] = useState('')
   const [isbnCoverPreviewUrl, setIsbnCoverPreviewUrl] = useState('')
+
+  const [screenshotCropQueue, setScreenshotCropQueue] = useState(
+    /** @type {File[]} */ ([]),
+  )
+  const [screenshotCropReplaceList, setScreenshotCropReplaceList] = useState(false)
+  const [screenshotCropReplaceAccum, setScreenshotCropReplaceAccum] = useState(
+    /** @type {File[]} */ ([]),
+  )
 
   const [selectedSourceId, setSelectedSourceId] = useState(
     /** @type {number | null} */ (null),
@@ -189,6 +198,22 @@ function App() {
 
   useEffect(() => {
     if (
+      screenshotCropReplaceList &&
+      screenshotCropQueue.length === 0 &&
+      screenshotCropReplaceAccum.length > 0
+    ) {
+      setScreenshotFiles(screenshotCropReplaceAccum)
+      setScreenshotCropReplaceAccum([])
+      setScreenshotCropReplaceList(false)
+    }
+  }, [
+    screenshotCropReplaceList,
+    screenshotCropQueue.length,
+    screenshotCropReplaceAccum,
+  ])
+
+  useEffect(() => {
+    if (
       activeView !== 'sourceInspirations' ||
       selectedSourceId == null ||
       !currentUser
@@ -265,15 +290,39 @@ function App() {
     setStep1Form((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleScreenshotCropCancel = useCallback(() => {
+    setScreenshotCropQueue([])
+    setScreenshotCropReplaceList(false)
+    setScreenshotCropReplaceAccum([])
+  }, [])
+
+  const handleScreenshotCropComplete = useCallback(
+    (file) => {
+      if (screenshotCropReplaceList) {
+        setScreenshotCropReplaceAccum((a) => [...a, file])
+      } else {
+        setScreenshotFiles((prev) => [...prev, file])
+      }
+      setScreenshotCropQueue((q) => q.slice(1))
+    },
+    [screenshotCropReplaceList],
+  )
+
   function onGalleryFilesChange(event) {
-    setScreenshotFiles(Array.from(event.target.files ?? []))
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (!files.length) return
+    setScreenshotFiles([])
+    setScreenshotCropReplaceList(true)
+    setScreenshotCropReplaceAccum([])
+    setScreenshotCropQueue(files)
   }
 
   function onCameraCaptureChange(event) {
     const added = Array.from(event.target.files ?? [])
     event.target.value = ''
     if (!added.length) return
-    setScreenshotFiles((prev) => [...prev, ...added])
+    setScreenshotCropQueue((q) => [...q, ...added])
   }
 
   async function onPreviewSubmit(event) {
@@ -372,6 +421,7 @@ function App() {
     setDraftForm(null)
     setDraftScreenshots([])
     setFormError('')
+    handleScreenshotCropCancel()
   }
 
   function onNewSourceFieldChange(event) {
@@ -752,6 +802,17 @@ function App() {
           formError={formError}
         />
       )}
+
+      {activeView === 'addInspiration' &&
+        step === 1 &&
+        screenshotCropQueue.length > 0 && (
+          <ScreenshotCropModal
+            key={`${screenshotCropQueue[0].name}-${screenshotCropQueue[0].lastModified}`}
+            file={screenshotCropQueue[0]}
+            onCancel={handleScreenshotCropCancel}
+            onComplete={handleScreenshotCropComplete}
+          />
+        )}
 
       {activeView === 'sourcesGallery' && (
         <SourcesGalleryView

@@ -136,7 +136,8 @@ export function AddInspirationView({
               </label>
             </div>
             <p className="hint">
-              Take photo adds each shot. Library picker replaces the current list.
+              After you choose images, you can zoom and frame the area to send to OCR (or use the full
+              image). Take photo adds each shot. Library picker replaces the current list.
             </p>
           </div>
           {screenshotFiles.length > 0 && (
