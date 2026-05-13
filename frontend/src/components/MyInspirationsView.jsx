@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { resolveMediaUrl } from '../lib/mediaUrl.js'
 
@@ -38,6 +38,26 @@ const SORT_OPTIONS = [
 /** Select value: show only inspirations with no shelf `source` link */
 const FILTER_NO_SOURCE = '__none__'
 
+const INSPIRATIONS_PAGE_SIZE = 10
+
+function inspirationSearchBlob(i) {
+  return [
+    i.essence,
+    i.quote,
+    i.user_thoughts,
+    i.source_title,
+    i.reference,
+    i.source_type,
+    i.source_display_title,
+    i.source_display_author,
+    formatInspirationDate(i.date),
+    String(i.id),
+  ]
+    .map((x) => String(x ?? ''))
+    .join('\n')
+    .toLowerCase()
+}
+
 export function MyInspirationsView({
   loading,
   error,
@@ -56,8 +76,11 @@ export function MyInspirationsView({
   const [actionError, setActionError] = useState('')
   const [sortBy, setSortBy] = useState('date-desc')
   const [filterSourceId, setFilterSourceId] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [listPage, setListPage] = useState(1)
+  const listTopRef = useRef(/** @type {HTMLDivElement | null} */ (null))
 
-  const filteredAndSorted = useMemo(() => {
+  const sourceFiltered = useMemo(() => {
     let list = [...inspirations]
     if (filterSourceId === FILTER_NO_SOURCE) {
       list = list.filter((i) => i.source == null)
@@ -66,6 +89,15 @@ export function MyInspirationsView({
       if (!Number.isNaN(sid)) {
         list = list.filter((i) => i.source === sid)
       }
+    }
+    return list
+  }, [inspirations, filterSourceId])
+
+  const filteredAndSorted = useMemo(() => {
+    let list = [...sourceFiltered]
+    const q = searchQuery.trim().toLowerCase()
+    if (q) {
+      list = list.filter((i) => inspirationSearchBlob(i).includes(q))
     }
     switch (sortBy) {
       case 'date-asc':
@@ -96,7 +128,39 @@ export function MyInspirationsView({
         break
     }
     return list
-  }, [inspirations, sortBy, filterSourceId])
+  }, [sourceFiltered, sortBy, searchQuery])
+
+  const totalFiltered = filteredAndSorted.length
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / INSPIRATIONS_PAGE_SIZE))
+  const safeListPage = Math.min(Math.max(1, listPage), totalPages)
+
+  useEffect(() => {
+    if (listPage !== safeListPage) {
+      setListPage(safeListPage)
+    }
+  }, [listPage, safeListPage])
+
+  useEffect(() => {
+    setListPage(1)
+  }, [searchQuery, filterSourceId])
+
+  const pagedRows = useMemo(() => {
+    const start = (safeListPage - 1) * INSPIRATIONS_PAGE_SIZE
+    return filteredAndSorted.slice(start, start + INSPIRATIONS_PAGE_SIZE)
+  }, [filteredAndSorted, safeListPage])
+
+  const rangeStart =
+    totalFiltered === 0 ? 0 : (safeListPage - 1) * INSPIRATIONS_PAGE_SIZE + 1
+  const rangeEnd = Math.min(safeListPage * INSPIRATIONS_PAGE_SIZE, totalFiltered)
+
+  const skipListScrollRef = useRef(true)
+  useEffect(() => {
+    if (skipListScrollRef.current) {
+      skipListScrollRef.current = false
+      return
+    }
+    listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [safeListPage])
 
   useEffect(() => {
     if (filterSourceId === '' || filterSourceId === FILTER_NO_SOURCE) return
@@ -402,9 +466,6 @@ export function MyInspirationsView({
       {lightbox}
       {editDialog}
       <h2 className="my-inspirations-page-title">My inspirations</h2>
-      <p className="hint my-inspirations-lead">
-        Everything you have saved.
-      </p>
 
       {actionError && !editRow ? <p className="error">{actionError}</p> : null}
 
@@ -412,10 +473,26 @@ export function MyInspirationsView({
       {error && !loading && <p className="error">{error}</p>}
 
       {!loading && !error && inspirations.length > 0 && (
-        <div className="my-inspirations-filters">
-          <label className="my-inspirations-sort">
-            <span className="my-inspirations-sort-label">Source</span>
-            <select
+        <>
+          <div className="my-inspirations-search-row">
+            <label className="my-inspirations-search">
+              <span className="my-inspirations-sort-label">Search</span>
+              <input
+                type="search"
+                className="my-inspirations-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Essence, quote, thoughts, titles, type, date…"
+                autoComplete="off"
+                spellCheck={false}
+                aria-label="Search inspirations"
+              />
+            </label>
+          </div>
+          <div className="my-inspirations-filters">
+            <label className="my-inspirations-sort">
+              <span className="my-inspirations-sort-label">Source</span>
+              <select
               className="my-inspirations-toolbar-select"
               value={filterSourceId}
               onChange={(e) => setFilterSourceId(e.target.value)}
@@ -449,6 +526,7 @@ export function MyInspirationsView({
             </select>
           </label>
         </div>
+        </>
       )}
 
       {!loading && !error && inspirations.length === 0 && (
@@ -462,23 +540,30 @@ export function MyInspirationsView({
         inspirations.length > 0 &&
         filteredAndSorted.length === 0 && (
           <p className="hint my-inspirations-filter-empty">
-            {filterSourceId === FILTER_NO_SOURCE ? (
+            {searchQuery.trim() && sourceFiltered.length > 0 ? (
+              <>
+                No inspirations match your search. Try different words or clear the search box.
+              </>
+            ) : filterSourceId === FILTER_NO_SOURCE ? (
               <>
                 None of your inspirations are without a linked shelf source. Choose{' '}
                 <strong>All sources</strong> or a specific source.
               </>
-            ) : (
+            ) : filterSourceId !== '' ? (
               <>
                 No inspirations are linked to this source. Choose <strong>All sources</strong>,{' '}
                 <strong>No linked source</strong>, or another shelf source.
               </>
+            ) : (
+              <>Nothing matches the current filters.</>
             )}
           </p>
         )}
 
       {!loading && !error && inspirations.length > 0 && filteredAndSorted.length > 0 && (
-        <ul className="my-inspirations-list">
-          {filteredAndSorted.map((i) => {
+        <div ref={listTopRef} className="my-inspirations-list-block">
+          <ul className="my-inspirations-list">
+            {pagedRows.map((i) => {
             const quote = (i.quote || '').trim()
             const essence = (i.essence || '').trim()
             const sourceTitle = (i.source_title || '').trim()
@@ -576,6 +661,32 @@ export function MyInspirationsView({
             )
           })}
         </ul>
+          <nav className="my-inspirations-pagination" aria-label="Inspiration pages">
+            <button
+              type="button"
+              className="my-inspirations-pagination-btn"
+              disabled={safeListPage <= 1}
+              onClick={() => setListPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </button>
+            <p className="my-inspirations-pagination-status">
+              Page {safeListPage} of {totalPages}
+              <span className="my-inspirations-pagination-range">
+                {' '}
+                · Showing {rangeStart}–{rangeEnd} of {totalFiltered}
+              </span>
+            </p>
+            <button
+              type="button"
+              className="my-inspirations-pagination-btn"
+              disabled={safeListPage >= totalPages}
+              onClick={() => setListPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </button>
+          </nav>
+        </div>
       )}
     </section>
   )

@@ -5,6 +5,7 @@ import { AddSourceView } from './components/AddSourceView.jsx'
 import { HamburgerNav } from './components/HamburgerNav.jsx'
 import { HomeView } from './components/HomeView.jsx'
 import { MyInspirationsView } from './components/MyInspirationsView.jsx'
+import { RequestAccountView } from './components/RequestAccountView.jsx'
 import { ScreenshotCropModal } from './components/ScreenshotCropModal.jsx'
 import { SourceInspirationsView } from './components/SourceInspirationsView.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
@@ -59,7 +60,7 @@ const emptyNewSource = {
   notes: '',
 }
 
-/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'sourceInspirations' | 'addSource'} AppView */
+/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'sourceInspirations' | 'addSource' | 'requestAccount'} AppView */
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -116,20 +117,35 @@ function App() {
     try {
       setLoading(true)
       setListAuthRequired(false)
-      const response = await fetch(apiUrl('/api/v1/inspirations/'), {
-        credentials: 'include',
-      })
-      if (response.status === 401 || response.status === 403) {
-        setInspirations([])
-        setListAuthRequired(true)
-        setError('')
-        return
+      const all = []
+      let page = 1
+      const maxPages = 200
+      while (page <= maxPages) {
+        const qs = new URLSearchParams({ page: String(page) })
+        const response = await fetch(
+          apiUrl(`/api/v1/inspirations/?${qs.toString()}`),
+          {
+            credentials: 'include',
+          },
+        )
+        if (response.status === 401 || response.status === 403) {
+          setInspirations([])
+          setListAuthRequired(true)
+          setError('')
+          return
+        }
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`)
+        }
+        const data = await response.json()
+        const batch = data.results ?? []
+        all.push(...batch)
+        if (!data.next || batch.length === 0) {
+          break
+        }
+        page += 1
       }
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`)
-      }
-      const data = await response.json()
-      setInspirations(data.results ?? [])
+      setInspirations(all)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Request failed')
     } finally {
@@ -142,21 +158,35 @@ function App() {
       setSourceInspirationsLoading(true)
       setSourceInspirationsAuthRequired(false)
       setSourceInspirationsError('')
-      const params = new URLSearchParams({ source: String(sourceId) })
-      const response = await fetch(
-        apiUrl(`/api/v1/inspirations/?${params.toString()}`),
-        { credentials: 'include' },
-      )
-      if (response.status === 401 || response.status === 403) {
-        setSourceInspirations([])
-        setSourceInspirationsAuthRequired(true)
-        return
+      const all = []
+      let page = 1
+      const maxPages = 200
+      while (page <= maxPages) {
+        const params = new URLSearchParams({
+          source: String(sourceId),
+          page: String(page),
+        })
+        const response = await fetch(
+          apiUrl(`/api/v1/inspirations/?${params.toString()}`),
+          { credentials: 'include' },
+        )
+        if (response.status === 401 || response.status === 403) {
+          setSourceInspirations([])
+          setSourceInspirationsAuthRequired(true)
+          return
+        }
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`)
+        }
+        const data = await response.json()
+        const batch = data.results ?? []
+        all.push(...batch)
+        if (!data.next || batch.length === 0) {
+          break
+        }
+        page += 1
       }
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`)
-      }
-      const data = await response.json()
-      setSourceInspirations(data.results ?? [])
+      setSourceInspirations(all)
     } catch (err) {
       setSourceInspirationsError(
         err instanceof Error ? err.message : 'Request failed',
@@ -311,6 +341,38 @@ function App() {
       cancelled = true
     }
   }, [loadInspirations])
+
+  const submitSignupRequest = useCallback(async (payload) => {
+    const csrf = await fetchSessionCsrf()
+    const response = await fetch(apiUrl('/api/v1/auth/signup-request/'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrf,
+      },
+      body: JSON.stringify(payload),
+    })
+    let data = {}
+    try {
+      data = await response.json()
+    } catch {
+      data = {}
+    }
+    if (!response.ok) {
+      const msg =
+        typeof data.detail === 'string'
+          ? data.detail
+          : `Request failed (${response.status}).`
+      throw new Error(msg)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (currentUser && activeView === 'requestAccount') {
+      setActiveView('home')
+    }
+  }, [currentUser, activeView])
 
   function goHome() {
     setActiveView('home')
@@ -734,6 +796,10 @@ function App() {
   function onNavSelect(view) {
     setActiveView(view)
     setNavOpen(false)
+    if (view === 'requestAccount') {
+      setShowLoginForm(false)
+      setLoginError('')
+    }
     if (view !== 'sourceInspirations') {
       setSelectedSourceId(null)
     }
@@ -754,9 +820,24 @@ function App() {
           )}
         </header>
 
-        <button type="button" className="app-brand" onClick={goHome}>
-          <h1 className="app-brand-title">Inspire Hub</h1>
-        </button>
+        <div className="app-brand-block">
+          <button type="button" className="app-brand" onClick={goHome}>
+            <h1 className="app-brand-title">Inspire Hub</h1>
+          </button>
+          {!authLoading && !currentUser ? (
+            <div className="app-guest-intro">
+              <p>
+                Save inspiring things you read by snapshotting a page and use AI Driven OCR to convert the image to text
+              </p>
+              <p>
+                Keep a log of special things that inspire you or build a base for your own creative endeavours.
+              </p>
+              <p>
+                If you would like to request a login click here!
+              </p>
+            </div>
+          ) : null}
+        </div>
 
         <HamburgerNav
           open={navOpen}
@@ -825,6 +906,10 @@ function App() {
         </p>
       )}
 
+      {activeView === 'requestAccount' && (
+        <p className="subtitle">Request access — your message is emailed to the site owner.</p>
+      )}
+
       {activeView === 'home' && (
         <HomeView
           loading={loading}
@@ -832,6 +917,13 @@ function App() {
           listAuthRequired={listAuthRequired}
           onSignInClick={() => setShowLoginForm(true)}
           inspirations={inspirations}
+        />
+      )}
+
+      {activeView === 'requestAccount' && !currentUser && (
+        <RequestAccountView
+          onSubmitRequest={submitSignupRequest}
+          onCancel={() => setActiveView('home')}
         />
       )}
 

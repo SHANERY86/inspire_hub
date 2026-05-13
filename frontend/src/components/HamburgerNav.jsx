@@ -99,6 +99,17 @@ export function HamburgerNav({
                 </button>
               </li>
               <li className="nav-menu-divider" role="presentation" />
+              {!authLoading && !currentUser && (
+                <li>
+                  <button
+                    type="button"
+                    className={`nav-menu-item${activeView === 'requestAccount' ? ' is-active' : ''}`}
+                    onClick={() => onSelect('requestAccount')}
+                  >
+                    Request an account
+                  </button>
+                </li>
+              )}
               {!authLoading && currentUser && (
                 <>
                   <li className="nav-menu-meta">

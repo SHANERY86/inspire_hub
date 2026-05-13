@@ -21,3 +21,5 @@ DATABASES = {
 # Keep screenshot uploads out of `media/` so pytest can wipe them safely.
 MEDIA_ROOT = BASE_DIR / '.pytest_media'
 MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+
+EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'

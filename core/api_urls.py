@@ -11,6 +11,7 @@ from .session_auth_views import (
     SessionLogoutView,
     SessionMeView,
 )
+from .signup_request_view import SignupRequestView
 from .source_api import SourceISBNLookupAPIView
 from .viewsets import InspirationViewSet, ScreenshotViewSet, SourceViewSet
 
@@ -24,6 +25,7 @@ urlpatterns = [
     path('auth/login/', SessionLoginView.as_view(), name='auth-login'),
     path('auth/logout/', SessionLogoutView.as_view(), name='auth-logout'),
     path('auth/me/', SessionMeView.as_view(), name='auth-me'),
+    path('auth/signup-request/', SignupRequestView.as_view(), name='auth-signup-request'),
     path(
         'sources/isbn-lookup/',
         SourceISBNLookupAPIView.as_view(),
