@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { resolveMediaUrl } from '../lib/mediaUrl.js'
 import {
   SPOTLIGHT_ARROW_POST_FADE_MS,
   SPOTLIGHT_FADE_MS,
   SPOTLIGHT_FONTS,
   SPOTLIGHT_ROTATE_MS,
 } from '../lib/spotlightFonts.js'
+
+function inspirationHasSpotlightContent(i) {
+  const quote = (i.quote || '').trim()
+  const shots = Array.isArray(i.screenshots) ? i.screenshots : []
+  return Boolean(quote) || shots.length > 0
+}
 
 function pickDifferentIndex(prev, len) {
   if (len <= 1) return 0
@@ -25,7 +32,7 @@ export function HomeView({
   inspirations,
 }) {
   const captures = useMemo(
-    () => inspirations.filter((i) => (i.quote || '').trim()),
+    () => inspirations.filter(inspirationHasSpotlightContent),
     [inspirations],
   )
   const captureIds = useMemo(() => captures.map((c) => c.id).join(','), [captures])
@@ -245,8 +252,8 @@ export function HomeView({
     return (
       <section className="card view-panel home-view">
         <p className="hint">
-          None of your saved inspirations include captured text from a screenshot
-          yet. When you save with OCR text kept, it can appear here.
+          None of your saved inspirations have captured text or a saved panel image yet.
+          OCR text or “Save image only” uploads can appear here.
         </p>
       </section>
     )
@@ -254,6 +261,8 @@ export function HomeView({
 
   const safeIdx = Math.min(displayIdx, captures.length - 1)
   const active = captures[safeIdx]
+  const shots = Array.isArray(active.screenshots) ? active.screenshots : []
+  const showScreenshots = shots.length > 0
   const captured = (active.quote || '').trim()
   const fontStack = SPOTLIGHT_FONTS[fontIdx % SPOTLIGHT_FONTS.length].stack
 
@@ -269,15 +278,31 @@ export function HomeView({
   const showArrows =
     multi && (fadeInArrows || hoverQuote || touchReveal)
 
-  const quoteBody = (
+  const spotlightBody = (
     <div className="home-spotlight-capture-wrap" style={fadeStyle}>
-      <p
-        className="home-spotlight-capture"
-        lang="en"
-        style={{ fontFamily: fontStack }}
-      >
-        {captured}
-      </p>
+      {showScreenshots ? (
+        <div className="home-spotlight-shots">
+          {shots.map((shot) => {
+            const src = resolveMediaUrl(shot.image)
+            return src ? (
+              <img
+                key={shot.id}
+                src={src}
+                alt=""
+                className="home-spotlight-shot"
+              />
+            ) : null
+          })}
+        </div>
+      ) : (
+        <p
+          className="home-spotlight-capture"
+          lang="en"
+          style={{ fontFamily: fontStack }}
+        >
+          {captured}
+        </p>
+      )}
       {(srcTitle || srcAuthor) && (
         <p className="home-spotlight-attribution" lang="en">
           {srcTitle ? (
@@ -298,7 +323,7 @@ export function HomeView({
   )
 
   return (
-    <section className="home-spotlight-hero" aria-label="Captured text">
+    <section className="home-spotlight-hero" aria-label="Spotlight inspiration">
       <div
         className={
           multi ? 'home-spotlight-carousel home-spotlight-carousel--multi' : 'home-spotlight-carousel'
@@ -326,7 +351,7 @@ export function HomeView({
             >
               ←
             </button>
-            {quoteBody}
+            {spotlightBody}
             <button
               type="button"
               className="home-spotlight-arrow home-spotlight-arrow--next"
@@ -338,7 +363,7 @@ export function HomeView({
             </button>
           </div>
         ) : (
-          quoteBody
+          spotlightBody
         )}
       </div>
     </section>
