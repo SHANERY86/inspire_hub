@@ -236,7 +236,7 @@ if config('INSPIRE_DEV_LOGGING', default=False, cast=bool):
 SILK_ENABLED = config('SILK_ENABLED', default=False, cast=bool)
 if SILK_ENABLED:
     INSTALLED_APPS.append('silk')
-    MIDDLEWARE.insert(1, 'django_silk.middleware.SilkyMiddleware')  # after SecurityMiddleware
+    MIDDLEWARE.insert(1, 'silk.middleware.SilkyMiddleware')  # after SecurityMiddleware (pip: django-silk)
     SILKY_AUTHENTICATION = True
     SILKY_AUTHORISATION = True
     SILKY_PYTHON_PROFILER = config('SILK_PYTHON_PROFILER', default=False, cast=bool)
