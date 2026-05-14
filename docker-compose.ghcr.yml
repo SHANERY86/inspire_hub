@@ -1,5 +1,5 @@
 # Run pre-built images from GitHub Container Registry (no local build).
-# Set BACKEND_IMAGE and FRONTEND_IMAGE (e.g. from Ansible) or add them to .env.
+# BACKEND_IMAGE / FRONTEND_IMAGE must be set for compose (Ansible env.j2 writes them into .env, or export manually).
 # Requires .env in the same directory (DB_*, SECRET_KEY, etc.).
 #
 # Example:
