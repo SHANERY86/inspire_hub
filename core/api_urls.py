@@ -12,7 +12,7 @@ from .session_auth_views import (
     SessionMeView,
 )
 from .signup_request_view import SignupRequestView
-from .source_api import SourceISBNLookupAPIView
+from .source_isbn_view import SourceISBNLookupAPIView
 from .viewsets import InspirationViewSet, ScreenshotViewSet, SourceViewSet
 
 router = DefaultRouter()
