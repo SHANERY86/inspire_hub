@@ -15,6 +15,9 @@ urlpatterns = [
     path(_base if _base else '', include('core.urls')),
 ]
 
+if getattr(settings, 'SILK_ENABLED', False):
+    urlpatterns.insert(0, path(f'{_base}silk/', include('silk.urls', namespace='silk')))
+
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -231,3 +231,13 @@ if config('INSPIRE_DEV_LOGGING', default=False, cast=bool):
         },
     }
 
+# Optional profiling UI: set SILK_ENABLED=true, log in as staff, open /<URL_PATH_PREFIX>/silk/
+# (e.g. https://host/inspire-hub/silk/). Turn off when done; stores data in DB (silk_* tables).
+SILK_ENABLED = config('SILK_ENABLED', default=False, cast=bool)
+if SILK_ENABLED:
+    INSTALLED_APPS.append('silk')
+    MIDDLEWARE.insert(1, 'django_silk.middleware.SilkyMiddleware')  # after SecurityMiddleware
+    SILKY_AUTHENTICATION = True
+    SILKY_AUTHORISATION = True
+    SILKY_PYTHON_PROFILER = config('SILK_PYTHON_PROFILER', default=False, cast=bool)
+

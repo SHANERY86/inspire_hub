@@ -9,4 +9,5 @@ python-decouple==3.8
 requests==2.31.0
 gunicorn
 whitenoise==6.8.2
+django-silk==5.5.0
 

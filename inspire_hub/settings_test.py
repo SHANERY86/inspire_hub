@@ -23,3 +23,8 @@ MEDIA_ROOT = BASE_DIR / '.pytest_media'
 MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+
+# Never load Silk during pytest (extra middleware, tables, and URL routes).
+SILK_ENABLED = False
+INSTALLED_APPS = [a for a in INSTALLED_APPS if a != 'silk']
+MIDDLEWARE = [m for m in MIDDLEWARE if 'SilkyMiddleware' not in m]
