@@ -1,53 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-function looksLikeSentenceStart(fragment) {
-  const t = fragment.trimStart()
-  if (!t) return false
-  return /^[A-Z0-9"'"'(]/.test(t)
-}
-
-function trimToSentenceStart(s) {
+/**
+ * Remove leading text only when the cut is at a capital letter immediately
+ * preceded by a full stop and whitespace (`." + whitespace + "[A-Z]`).
+ * If that pattern never appears, the string is unchanged.
+ */
+function trimLeadingBeforeCapitalAfterFullStop(s) {
   if (!s) return s
-  const leading = s.match(/^\s*/)[0].length
-  const rest = s.slice(leading)
-  if (looksLikeSentenceStart(rest)) return s.slice(leading)
-
-  const re = /[.!?]\s+/g
-  let m
-  while ((m = re.exec(s)) !== null) {
-    const idx = m.index + m[0].length
-    const from = s.slice(idx)
-    const trimFrom = from.search(/\S/)
-    if (trimFrom === -1) continue
-    if (looksLikeSentenceStart(from.slice(trimFrom))) return s.slice(idx + trimFrom)
-  }
-  return s
+  const m = s.match(/\.\s+[A-Z]/)
+  if (!m || m.index === undefined) return s
+  const capIdx = m.index + m[0].length - 1
+  return s.slice(capIdx)
 }
 
-function trimToSentenceEnd(s) {
+/** Remove text after the last full stop (period); keeps the period. */
+function trimAfterLastFullStop(s) {
   if (!s) return s
   const t = s.replace(/\s+$/, '')
-  if (/[.!?]\s*$/.test(t)) return t
-
-  let lastPunct = -1
-  const re = /[.!?]\s+/g
-  let m
-  while ((m = re.exec(t)) !== null) {
-    lastPunct = m.index
-  }
-  if (lastPunct >= 0) return t.slice(0, lastPunct + 1).trimEnd()
-  return s
-}
-
-function trimLineSegmentsForPicker(lines) {
-  if (lines.length <= 1) return lines
-  const out = lines.slice()
-  const first = trimToSentenceStart(out[0])
-  out[0] = first.length ? first : out[0]
-  const li = out.length - 1
-  const last = trimToSentenceEnd(out[li])
-  out[li] = last.length ? last : out[li]
-  return out
+  if (/\.\s*$/.test(t)) return t
+  const i = t.lastIndexOf('.')
+  if (i === -1) return s
+  return t.slice(0, i + 1).trimEnd()
 }
 
 function segmentTextForPickerRaw(text) {
@@ -68,31 +41,28 @@ function segmentTextForPickerRaw(text) {
   return { mode: 'single', segments: [one] }
 }
 
-function segmentTextForPickerTrimmed(text) {
-  const t = text ?? ''
-  if (!t) return { mode: 'lines', segments: [''] }
-  const lines = t.split('\n')
-  if (lines.length > 1) {
-    return { mode: 'lines', segments: trimLineSegmentsForPicker(lines) }
-  }
-  let one = lines[0]
-  const trimmedBlob = trimToSentenceEnd(trimToSentenceStart(one))
-  if (trimmedBlob.length) one = trimmedBlob
-  const sentences = one
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-  if (sentences.length > 1) {
-    return { mode: 'sentences', segments: sentences }
-  }
-  return { mode: 'single', segments: [one] }
-}
-
 function joinSegments(mode, segments) {
   if (!segments.length) return ''
   if (mode === 'lines') return segments.join('\n')
   if (mode === 'sentences') return segments.join(' ')
   return segments[0] ?? ''
+}
+
+/** Global trim on full text; rows/sentences that are checked keep their original text. */
+function mergeTrimmedWithPreservedChecked(text, checked, mode, originalSegments) {
+  const trimmed = trimAfterLastFullStop(trimLeadingBeforeCapitalAfterFullStop(text))
+  const next = segmentTextForPickerRaw(trimmed)
+  if (next.mode !== mode) {
+    return trimmed
+  }
+  const out = next.segments.slice()
+  const m = Math.min(originalSegments.length, out.length, checked.length)
+  for (let i = 0; i < m; i += 1) {
+    if (checked[i]) {
+      out[i] = originalSegments[i]
+    }
+  }
+  return joinSegments(mode, out)
 }
 
 /** Keep picker selections when parent text edits change length (pad/truncate); preserve all when length matches. */
@@ -105,70 +75,117 @@ function reconcileChecked(prev, newLength) {
 }
 
 export function ExtractedTextPickerPanel({ text, onApply }) {
-  const [trimEdges, setTrimEdges] = useState(false)
-  const { mode, segments } = useMemo(
-    () =>
-      trimEdges
-        ? segmentTextForPickerTrimmed(text)
-        : segmentTextForPickerRaw(text),
-    [text, trimEdges],
+  /** Drives checkbox rows only — stays full OCR until you edit the field or trim (not shrunk by Apply checked). */
+  const [pickerListSource, setPickerListSource] = useState(() => text ?? '')
+
+  const { mode: listMode, segments: listSegments } = useMemo(
+    () => segmentTextForPickerRaw(pickerListSource ?? ''),
+    [pickerListSource],
   )
+
+  const { mode: fieldMode, segments: fieldSegments } = useMemo(
+    () => segmentTextForPickerRaw(text ?? ''),
+    [text],
+  )
+
   const [checked, setChecked] = useState(() =>
-    segmentTextForPickerRaw(text).segments.map(() => false),
+    segmentTextForPickerRaw(pickerListSource ?? '').segments.map(() => false),
   )
 
   const prevTextRef = useRef(text)
+  /** Full extracted text before Trim edges (one-step undo). */
+  const preTrimSnapshot = useRef(null)
+  /** When true, the next `text` change came from `handleTrimExtractedField` — do not clear undo snapshot. */
+  const trimJustAppliedRef = useRef(false)
+  /** When true, the next `text` change came from Apply checked — keep picker list source unchanged. */
+  const applyCheckedJustAppliedRef = useRef(false)
 
   useEffect(() => {
     const textChanged = prevTextRef.current !== text
     prevTextRef.current = text
 
     if (textChanged) {
-      setTrimEdges(false)
+      if (trimJustAppliedRef.current) {
+        trimJustAppliedRef.current = false
+        setPickerListSource(text)
+        const newLen = segmentTextForPickerRaw(text).segments.length
+        setChecked((prev) => reconcileChecked(prev, newLen))
+        return
+      }
+      if (applyCheckedJustAppliedRef.current) {
+        applyCheckedJustAppliedRef.current = false
+        const pickLen = segmentTextForPickerRaw(pickerListSource).segments.length
+        // List rows no longer line up with merged textarea lines — clear checks so Trim / next apply stay consistent.
+        setChecked(Array.from({ length: pickLen }, () => false))
+        return
+      }
+      preTrimSnapshot.current = null
+      setPickerListSource(text)
       const newLen = segmentTextForPickerRaw(text).segments.length
       setChecked((prev) => reconcileChecked(prev, newLen))
       return
     }
 
     setChecked((prev) => {
-      const segs = (
-        trimEdges ? segmentTextForPickerTrimmed(text) : segmentTextForPickerRaw(text)
-      ).segments
+      const segs = segmentTextForPickerRaw(pickerListSource).segments
       if (prev.length === segs.length) return prev
       const next = prev.slice(0, segs.length)
       while (next.length < segs.length) next.push(false)
       return next
     })
-  }, [text, trimEdges])
+  }, [text, pickerListSource])
 
   function toggleRow(i) {
     setChecked((prev) => prev.map((v, j) => (j === i ? !v : v)))
   }
 
   function handleApply() {
-    const kept = segments.filter((_, i) => checked[i])
+    const kept = listSegments.filter((_, i) => checked[i])
     if (!kept.length) return
-    onApply(joinSegments(mode, kept))
+    applyCheckedJustAppliedRef.current = true
+    onApply(joinSegments(listMode, kept))
+  }
+
+  function handleTrimExtractedField() {
+    if (!text) return
+    if (preTrimSnapshot.current === null) {
+      preTrimSnapshot.current = text
+    }
+    trimJustAppliedRef.current = true
+    const merged = mergeTrimmedWithPreservedChecked(
+      text,
+      checked,
+      fieldMode,
+      fieldSegments,
+    )
+    onApply(merged)
+  }
+
+  function handleUndoTrim() {
+    if (preTrimSnapshot.current == null) return
+    const snap = preTrimSnapshot.current
+    preTrimSnapshot.current = null
+    onApply(snap)
   }
 
   const keptCount = checked.filter(Boolean).length
-  const trimLabel = mode === 'lines' ? 'Trim line edges' : 'Trim text edges'
-  const fullLabel = mode === 'lines' ? 'Show full lines' : 'Show full text'
+  const canUndoTrim = preTrimSnapshot.current != null
+
   const lead =
-    'Apply merges checked rows into the read-only extracted text above. '
+    'Apply checked writes the merged lines into the extracted text field above; the pick list stays on the full OCR so you can choose again (checkboxes clear after each apply). '
   const hint =
-    mode === 'lines'
-      ? `${lead}Each row is one OCR line. Optional: trim the first and last row at sentence boundaries.`
-      : mode === 'sentences'
-        ? `${lead}Optional: trim stray text at the start/end of the block before picking rows.`
-        : `${lead}Only one chunk — try Trim text edges to split into sentences, or go back to adjust the image.`
+    listMode === 'lines'
+      ? `${lead}Each row is one OCR line. Trim edges updates the large extracted field: leading text is removed only from the start up to the first capital letter that follows a full stop and whitespace (e.g. ". "), and trailing text after the last full stop (.) is removed. Checked rows are left unchanged. Editing the extracted field refreshes the pick list to match.`
+      : listMode === 'sentences'
+        ? `${lead}Trim edges updates the whole block: leading text is removed only up to the first capital letter that follows a full stop and whitespace (e.g. ". "), and trailing text after the last full stop (.) is removed. Checked sentences are left unchanged. Editing the extracted field refreshes the pick list to match.`
+        : `${lead}Trim edges: leading text is removed only up to the first capital after ". ", then trailing text after the last "." Check a row to preserve it, or Undo.`
 
   return (
     <details className="line-pick-details">
       <summary className="line-pick-summary">Pick parts to keep</summary>
       <p className="hint line-pick-hint">
         {hint}
-        {segments.length > 5
+        {listSegments.length > 5
           ? ' Scroll inside the list below to see every row.'
           : ''}
       </p>
@@ -176,22 +193,22 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
         <button
           type="button"
           className="secondary"
-          disabled={trimEdges}
-          onClick={() => setTrimEdges(true)}
+          disabled={!text}
+          onClick={handleTrimExtractedField}
         >
-          {trimLabel}
+          Trim edges
         </button>
         <button
           type="button"
           className="secondary"
-          disabled={!trimEdges}
-          onClick={() => setTrimEdges(false)}
+          disabled={!canUndoTrim}
+          onClick={handleUndoTrim}
         >
-          {fullLabel}
+          Undo trim
         </button>
       </div>
       <ul className="line-pick-list" aria-label="Text chunks to include or exclude">
-        {segments.map((seg, i) => (
+        {listSegments.map((seg, i) => (
           <li key={i} className="line-pick-row">
             <label className="line-pick-label">
               <input
