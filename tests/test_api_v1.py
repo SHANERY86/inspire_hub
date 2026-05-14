@@ -226,6 +226,25 @@ class TestInspirationCRUD:
         r = authenticated_api_client.post('/api/v1/inspirations/', payload, format='json')
         assert r.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_patch_inspiration_with_another_users_source(
+        self, authenticated_api_client, api_user, django_user_model):
+        other = django_user_model.objects.create_user(username='src_owner', password='pw')
+        src = Source.objects.create(user=other, title='Theirs', source_type='book')
+        ins = Inspiration.objects.create(
+        user=api_user,
+        source_title='T',
+        essence='E',
+        source_type='book',
+        quote='q',
+        is_public=False,
+        )
+        r = authenticated_api_client.patch(
+            f'/api/v1/inspirations/{ins.pk}/',
+            {'source': src.pk},
+            format='json',
+        )
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_patch_and_delete(self, authenticated_api_client, api_user):
         ins = Inspiration.objects.create(
             user=api_user,
