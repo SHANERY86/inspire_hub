@@ -56,3 +56,6 @@ media/screenshots/**
 # Personal learning notes
 LEARNING_NOTES.md
 
+# Pi DB/media backups (scripts/backup-from-pi.sh, scripts/backup-on-pi.sh)
+backups/
+

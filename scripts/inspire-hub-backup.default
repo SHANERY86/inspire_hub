@@ -1,0 +1,8 @@
+# Copy to the Pi: /etc/default/inspire-hub-backup
+# Used by /opt/inspire_hub/scripts/backup-on-pi.sh (weekly cron).
+
+INSTALL_DIR=/opt/inspire_hub
+BACKUP_DIR=/var/backups/inspire_hub
+RCLONE_DEST='gdrive:Inspire Hub Backups'
+RETAIN_LOCAL=0
+RETAIN_REMOTE=1
