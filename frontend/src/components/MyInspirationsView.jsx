@@ -69,6 +69,8 @@ export function MyInspirationsView({
   sourcesLoading,
   onPatchInspiration,
   onDeleteInspiration,
+  /** When set, filter list to this saved source; null clears the source filter. */
+  initialSourceFilterId = null,
 }) {
   const [lightboxSrc, setLightboxSrc] = useState(/** @type {string | null} */ (null))
   const [editRow, setEditRow] = useState(null)
@@ -79,6 +81,14 @@ export function MyInspirationsView({
   const [searchQuery, setSearchQuery] = useState('')
   const [listPage, setListPage] = useState(1)
   const listTopRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+
+  useEffect(() => {
+    if (initialSourceFilterId == null) {
+      setFilterSourceId('')
+      return
+    }
+    setFilterSourceId(String(initialSourceFilterId))
+  }, [initialSourceFilterId])
 
   const sourceFiltered = useMemo(() => {
     let list = [...inspirations]

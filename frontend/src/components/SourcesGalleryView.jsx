@@ -11,7 +11,7 @@ function SourceCoverTile({ source, onOpen }) {
       type="button"
       className="sources-gallery-tile"
       onClick={() => onOpen(source.id)}
-      aria-label={`Open inspirations for ${label}`}
+      aria-label={`View my inspirations for ${label}`}
     >
       <span className="sources-gallery-tile-inner">
         <span className="sources-gallery-cover-wrap">

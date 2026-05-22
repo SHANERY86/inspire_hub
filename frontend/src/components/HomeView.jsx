@@ -88,17 +88,25 @@ export function HomeView({
     return () => mql.removeEventListener('change', sync)
   }, [])
 
+  const flashArrowsBriefly = useCallback(() => {
+    if (fadeInArrowsTimerRef.current != null) {
+      window.clearTimeout(fadeInArrowsTimerRef.current)
+      fadeInArrowsTimerRef.current = null
+    }
+    setFadeInArrows(true)
+    fadeInArrowsTimerRef.current = window.setTimeout(() => {
+      setFadeInArrows(false)
+      fadeInArrowsTimerRef.current = null
+    }, SPOTLIGHT_ARROW_POST_FADE_MS)
+  }, [])
+
   useEffect(() => {
     if (fadeInArrowsTimerRef.current != null) {
       window.clearTimeout(fadeInArrowsTimerRef.current)
       fadeInArrowsTimerRef.current = null
     }
     if (prevVisibleRef.current === false && visible === true) {
-      setFadeInArrows(true)
-      fadeInArrowsTimerRef.current = window.setTimeout(() => {
-        setFadeInArrows(false)
-        fadeInArrowsTimerRef.current = null
-      }, SPOTLIGHT_ARROW_POST_FADE_MS)
+      flashArrowsBriefly()
     }
     if (!visible) {
       setFadeInArrows(false)
@@ -110,7 +118,7 @@ export function HomeView({
         fadeInArrowsTimerRef.current = null
       }
     }
-  }, [visible])
+  }, [visible, flashArrowsBriefly])
 
   const clearTouchHideTimer = useCallback(() => {
     if (touchHideTimerRef.current != null) {
@@ -217,12 +225,15 @@ export function HomeView({
       setDisplayIdx(Math.floor(Math.random() * captures.length))
       setFontIdx(Math.floor(Math.random() * SPOTLIGHT_FONTS.length))
       setVisible(true)
+      if (captures.length > 1) {
+        flashArrowsBriefly()
+      }
     } else {
       setDisplayIdx((d) =>
         Math.min(Math.max(0, d), Math.max(0, captures.length - 1)),
       )
     }
-  }, [captureIds, captures.length, clearTimers])
+  }, [captureIds, captures.length, clearTimers, flashArrowsBriefly])
 
   useEffect(() => {
     if (captures.length <= 1) {

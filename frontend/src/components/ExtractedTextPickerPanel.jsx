@@ -229,7 +229,7 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
       </ul>
       <button
         type="button"
-        className="secondary line-pick-apply"
+        className="line-pick-apply"
         disabled={keptCount === 0}
         onClick={handleApply}
       >

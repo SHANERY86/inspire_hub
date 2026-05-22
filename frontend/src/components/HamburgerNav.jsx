@@ -81,11 +81,7 @@ export function HamburgerNav({
                   <li>
                     <button
                       type="button"
-                      className={`nav-menu-item${
-                        activeView === 'sourcesGallery' || activeView === 'sourceInspirations'
-                          ? ' is-active'
-                          : ''
-                      }`}
+                      className={`nav-menu-item${activeView === 'sourcesGallery' ? ' is-active' : ''}`}
                       onClick={() => onSelect('sourcesGallery')}
                     >
                       Inspiration sources
