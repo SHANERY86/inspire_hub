@@ -171,23 +171,12 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
   const keptCount = checked.filter(Boolean).length
   const canUndoTrim = preTrimSnapshot.current != null
 
-  const lead =
-    'Apply checked writes the merged lines into the extracted text field above; the pick list stays on the full OCR so you can choose again (checkboxes clear after each apply). '
-  const hint =
-    listMode === 'lines'
-      ? `${lead}Each row is one OCR line. Trim edges updates the large extracted field: leading text is removed only from the start up to the first capital letter that follows a full stop and whitespace (e.g. ". "), and trailing text after the last full stop (.) is removed. Checked rows are left unchanged. Editing the extracted field refreshes the pick list to match.`
-      : listMode === 'sentences'
-        ? `${lead}Trim edges updates the whole block: leading text is removed only up to the first capital letter that follows a full stop and whitespace (e.g. ". "), and trailing text after the last full stop (.) is removed. Checked sentences are left unchanged. Editing the extracted field refreshes the pick list to match.`
-        : `${lead}Trim edges: leading text is removed only up to the first capital after ". ", then trailing text after the last "." Check a row to preserve it, or Undo.`
-
   return (
     <details className="line-pick-details">
       <summary className="line-pick-summary">Pick parts to keep</summary>
       <p className="hint line-pick-hint">
-        {hint}
-        {listSegments.length > 5
-          ? ' Scroll inside the list below to see every row.'
-          : ''}
+        Select lines below. Trim edges will whip off words you don&apos;t want at the start and end of
+        the block.
       </p>
       <div className="line-pick-trim-actions">
         <button
