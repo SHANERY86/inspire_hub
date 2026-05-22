@@ -95,6 +95,7 @@ function App() {
   const [draftScreenshots, setDraftScreenshots] = useState([])
   const cameraInputRef = useRef(null)
   const barcodeIsbnRef = useRef(null)
+  const saveSuccessRef = useRef(/** @type {HTMLParagraphElement | null} */ (null))
 
   const [sources, setSources] = useState([])
   const [sourcesLoading, setSourcesLoading] = useState(false)
@@ -345,6 +346,21 @@ function App() {
         ? 'Request an account · Inspire Hub'
         : 'Inspire Hub'
   }, [activeView, currentUser])
+
+  useEffect(() => {
+    if (
+      activeView !== 'addInspiration' ||
+      step !== 1 ||
+      !saveSuccessMessage
+    ) {
+      return
+    }
+    const id = requestAnimationFrame(() => {
+      saveSuccessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [activeView, step, saveSuccessMessage])
 
   function goHome() {
     setActiveView('home')
@@ -920,7 +936,7 @@ function App() {
       )}
 
       {activeView === 'addInspiration' && saveSuccessMessage ? (
-        <p className="subtitle" role="status">
+        <p ref={saveSuccessRef} className="subtitle" role="status">
           {saveSuccessMessage}
         </p>
       ) : null}
