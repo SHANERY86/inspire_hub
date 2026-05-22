@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pi monitoring</title>
+  <style>
+    :root {
+      --bg: #1a1a1e;
+      --card: #25252c;
+      --text: #f2f2f4;
+      --muted: #9a9aa8;
+      --accent: #e85d04;
+      --ok: #3d9970;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.5rem;
+    }
+    h1 { margin: 0 0 0.25rem; font-size: 1.35rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      max-width: 1100px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 10px;
+      padding: 1.25rem;
+      border: 1px solid #33333d;
+    }
+    .card h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .value {
+      font-size: 2.25rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--accent);
+    }
+    .detail { margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted); }
+    .bar {
+      margin-top: 0.75rem;
+      height: 8px;
+      background: #33333d;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .err { color: #ff6b6b; max-width: 40rem; }
+    a { color: var(--accent); }
+    footer { margin-top: 1.5rem; font-size: 0.8rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>Pi monitoring</h1>
+  <p class="sub" id="host-line">Loading…</p>
+
+  <div class="grid" id="cards" hidden>
+    <div class="card">
+      <h2>CPU</h2>
+      <div class="value" id="cpu-val">—</div>
+      <div class="detail" id="cpu-detail">busy %</div>
+      <div class="bar"><span id="cpu-bar" style="width:0%"></span></div>
+    </div>
+    <div class="card">
+      <h2>CPU temp</h2>
+      <div class="value" id="temp-val">—</div>
+      <div class="detail" id="temp-detail">°C</div>
+      <div class="bar"><span id="temp-bar" style="width:0%"></span></div>
+    </div>
+    <div class="card">
+      <h2>Load</h2>
+      <div class="value" id="load-val">—</div>
+      <div class="detail" id="load-detail">—</div>
+      <div class="bar"><span id="load-bar" style="width:0%"></span></div>
+    </div>
+    <div class="card">
+      <h2>RAM</h2>
+      <div class="value" id="ram-val">—</div>
+      <div class="detail" id="ram-detail">—</div>
+      <div class="bar"><span id="ram-bar" style="width:0%"></span></div>
+    </div>
+    <div class="card">
+      <h2>RAM available</h2>
+      <div class="value" id="ram-avail-val">—</div>
+      <div class="detail" id="ram-avail-detail">—</div>
+      <div class="bar"><span id="ram-avail-bar" style="width:0%"></span></div>
+    </div>
+    <div class="card">
+      <h2>Disk <code>/</code></h2>
+      <div class="value" id="disk-val">—</div>
+      <div class="detail" id="disk-detail">—</div>
+      <div class="bar"><span id="disk-bar" style="width:0%"></span></div>
+    </div>
+  </div>
+
+  <p class="err" id="error" hidden></p>
+
+  <footer>
+    Data from <a id="netdata-link" href="#">Netdata</a> · refreshes every 5s
+  </footer>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const NETDATA = (params.get('netdata') || 'http://192.168.1.68:19999').replace(/\/$/, '');
+    const CHART_TEMP = 'sensors.temperature_cpu_thermal-virtual-0_temp1_input';
+    const CPU_CORES = 4;
+    const TEMP_WARN_C = 70;
+    const TEMP_MAX_C = 85;
+
+    document.getElementById('netdata-link').href = NETDATA;
+    document.getElementById('host-line').textContent = NETDATA;
+
+    async function fetchChart(chart) {
+      const url = `${NETDATA}/api/v1/data?chart=${encodeURIComponent(chart)}&format=json&points=1&group=average&gtime=0`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${chart}: HTTP ${res.status}`);
+      return res.json();
+    }
+
+    function latestRow(payload) {
+      const { labels, data } = payload;
+      if (!data?.length) return null;
+      const row = data[data.length - 1];
+      const out = {};
+      for (let i = 1; i < labels.length; i++) out[labels[i]] = row[i];
+      return out;
+    }
+
+    function pct(used, total) {
+      if (!total) return 0;
+      return Math.min(100, Math.max(0, (used / total) * 100));
+    }
+
+    function fmtMb(n) {
+      return `${n.toFixed(0)} MB`;
+    }
+
+    function fmtGb(n) {
+      return `${n.toFixed(2)} GB`;
+    }
+
+    async function refresh() {
+      const errEl = document.getElementById('error');
+      const cards = document.getElementById('cards');
+      try {
+        const [cpuRaw, tempRaw, loadRaw, ramRaw, memAvailRaw, diskRaw] = await Promise.all([
+          fetchChart('system.cpu'),
+          fetchChart(CHART_TEMP),
+          fetchChart('system.load'),
+          fetchChart('system.ram'),
+          fetchChart('mem.available'),
+          fetchChart('disk_space./'),
+        ]);
+
+        const cpu = latestRow(cpuRaw);
+        const temp = latestRow(tempRaw);
+        const load = latestRow(loadRaw);
+        const ram = latestRow(ramRaw);
+        const memAvail = latestRow(memAvailRaw);
+        const disk = latestRow(diskRaw);
+
+        const cpuBusy = ['user', 'nice', 'system', 'iowait', 'irq', 'softirq', 'steal', 'guest', 'guest_nice']
+          .reduce((s, k) => s + (cpu[k] || 0), 0);
+
+        const ramUsed = ram.used || 0;
+        const ramFree = ram.free || 0;
+        const ramCached = ram.cached || 0;
+        const ramBuffers = ram.buffers || 0;
+        const ramTotal = ramUsed + ramFree + ramCached + ramBuffers;
+
+        const diskUsed = disk.used || 0;
+        const diskAvail = disk.avail || 0;
+        const diskReserved = disk['reserved for root'] || 0;
+        const diskTotal = diskUsed + diskAvail + diskReserved;
+
+        document.getElementById('cpu-val').textContent = `${cpuBusy.toFixed(1)}%`;
+        document.getElementById('cpu-bar').style.width = `${cpuBusy}%`;
+
+        const tempC = temp.input ?? 0;
+        const tempPct = pct(tempC, TEMP_MAX_C);
+        document.getElementById('temp-val').textContent = `${tempC.toFixed(1)}°`;
+        document.getElementById('temp-detail').textContent =
+          tempC >= TEMP_WARN_C ? 'warm — may throttle' : 'CPU thermal';
+        const tempBar = document.getElementById('temp-bar');
+        tempBar.style.width = `${tempPct}%`;
+        tempBar.style.background = tempC >= TEMP_WARN_C ? '#e6a700' : '';
+
+        const load1 = load.load1 ?? 0;
+        const load5 = load.load5 ?? 0;
+        const load15 = load.load15 ?? 0;
+        const loadPct = pct(load1, CPU_CORES);
+        document.getElementById('load-val').textContent = load1.toFixed(2);
+        document.getElementById('load-detail').textContent =
+          `1m · ${load5.toFixed(2)} 5m · ${load15.toFixed(2)} 15m (${CPU_CORES} cores)`;
+        document.getElementById('load-bar').style.width = `${loadPct}%`;
+
+        const ramAvailMb = memAvail.avail ?? 0;
+        const ramAvailPct = pct(ramAvailMb, ramTotal);
+        document.getElementById('ram-avail-val').textContent = fmtMb(ramAvailMb);
+        document.getElementById('ram-avail-detail').textContent =
+          `${ramAvailPct.toFixed(0)}% of ${fmtMb(ramTotal)} total`;
+        document.getElementById('ram-avail-bar').style.width = `${ramAvailPct}%`;
+
+        const ramPct = pct(ramUsed, ramTotal);
+        document.getElementById('ram-val').textContent = `${ramPct.toFixed(0)}%`;
+        document.getElementById('ram-detail').textContent =
+          `${fmtMb(ramUsed)} used · ${fmtMb(ramFree)} free · ${fmtMb(ramTotal)} total`;
+        document.getElementById('ram-bar').style.width = `${ramPct}%`;
+
+        const diskPct = pct(diskUsed, diskTotal);
+        document.getElementById('disk-val').textContent = `${diskPct.toFixed(0)}%`;
+        document.getElementById('disk-detail').textContent =
+          `${fmtGb(diskAvail)} free · ${fmtGb(diskUsed)} used · ${fmtGb(diskTotal)} on /`;
+        document.getElementById('disk-bar').style.width = `${diskPct}%`;
+
+        errEl.hidden = true;
+        cards.hidden = false;
+      } catch (e) {
+        errEl.textContent = `Could not load metrics: ${e.message}. Is Netdata running at ${NETDATA}?`;
+        errEl.hidden = false;
+        cards.hidden = true;
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>
