@@ -1,109 +1,98 @@
 # Inspire Hub
 
-A personal inspiration and creative journal application to capture notes from things you read, watch, and your creative endeavors. Built with Django for robust user management and social features.
+A personal inspiration journal for capturing quotes, thoughts, and screenshots from books, articles, and other sources. Built with Django REST Framework and React, deployed to a Raspberry Pi via Docker and Ansible.
 
-## Current Status: Draft 1 - Basic Django Setup ✓
+## Features
 
-Basic Django project structure with a simple home page.
+- **Two-step inspiration flow** — upload a screenshot, OCR extracts the text (via OCR.space), crop and pick the lines you want, then save with your own thoughts
+- **Source library** — track books, articles, and other media with ISBN auto-lookup (Open Library)
+- **Public spotlight** — mark inspirations as public; guests see a rotating showcase on the home page
+- **Screenshot management** — crop, preview, and attach images to inspirations
+- **User accounts** — session-based auth with signup request emails to the admin
+- **Filtering & browsing** — filter your inspirations by source, search, and view by source gallery
 
-## Why Django?
+## Tech stack
 
-- **Built-in user authentication** - Login, logout, password management
-- **Admin interface** - Free, professional admin panel
-- **Social-ready** - Easy to add user profiles, following, sharing
-- **Enterprise-grade** - Security, scalability, production-ready
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18, Vite, react-easy-crop |
+| Backend | Django 4.2, Django REST Framework, Gunicorn |
+| Database | PostgreSQL 16 |
+| OCR | OCR.space API |
+| Containers | Docker (multi-stage builds), nginx |
+| CI/CD | GitHub Actions — pytest, build + push `linux/arm/v7` images to GHCR |
+| Deployment | Ansible playbook to Raspberry Pi |
+| Backups | Cron script on Pi with rclone upload to Google Drive |
+| Monitoring | Netdata + lightweight HTML dashboard |
 
-## Prerequisites
-
-- Python 3.8 or higher
-- pip
-
-## Setup Instructions
-
-1. **Create a virtual environment:**
-   ```bash
-   python3 -m venv venv
-   ```
-
-2. **Activate the virtual environment:**
-   - On macOS/Linux:
-     ```bash
-     source venv/bin/activate
-     ```
-   - On Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Run migrations:**
-   ```bash
-   python manage.py migrate
-   ```
-
-5. **Run the development server:**
-   ```bash
-   python manage.py runserver
-   ```
-
-6. **Open your browser:**
-   Navigate to `http://localhost:8000`
-
-## Project Structure
+## Project structure
 
 ```
 inspire_hub/
-├── manage.py              # Django management script
-├── inspire_hub/           # Project configuration
-│   ├── __init__.py
-│   ├── settings.py        # Django settings
-│   ├── urls.py            # Main URL routing
-│   └── wsgi.py            # WSGI entry point
-├── core/                  # Main application
-│   ├── __init__.py
-│   ├── apps.py
-│   ├── models.py          # Database models (to be added)
-│   ├── views.py           # View functions
-│   ├── urls.py            # App URL routing
-│   └── templates/         # HTML templates
-│       └── core/
-│           └── index.html
-├── requirements.txt       # Python dependencies
-└── README.md             # This file
+├── core/                       # Django app (models, views, API, templates)
+│   ├── models.py               # Source, Inspiration, Screenshot
+│   ├── views.py                # DRF viewsets + SPA shell
+│   ├── api_urls.py             # /api/v1/ routes
+│   └── serializers.py
+├── inspire_hub/                # Django project config (settings, urls, wsgi)
+├── frontend/                   # React SPA (Vite)
+│   ├── src/components/         # AddInspirationView, HomeView, SourcesGalleryView, etc.
+│   ├── Dockerfile              # Multi-stage: Node build → nginx
+│   └── vite.config.js
+├── ansible/                    # Ansible deployment to Pi
+│   ├── inventory/hosts.yml     # Host vars, vaulted secrets
+│   └── playbooks/deploy.yml    # Pull GHCR images, template .env, start stack
+├── scripts/
+│   ├── backup-on-pi.sh         # pg_dump + media → .tar.gz, optional rclone to Google Drive
+│   └── pi-monitoring-dashboard.html
+├── docs/
+│   ├── backup-google-drive.md  # Backup + rclone setup guide
+│   ├── deploy-apache.md        # Apache reverse proxy setup
+│   └── pi-monitoring-dashboard.md
+├── tests/                      # pytest suite (API, auth, sources, SPA routes)
+├── docker-compose.yml          # Local dev stack (build from source)
+├── docker-compose.ghcr.yml     # Production stack (pre-built GHCR images)
+├── Dockerfile                  # Backend: Python 3.11 + Gunicorn
+├── .github/workflows/          # CI: test + build ARM images
+├── .env.example                # Environment variable template
+└── requirements.txt            # Python dependencies
 ```
 
-## Roadmap
+## Local development
 
-- **Draft 1** : Basic Django setup with home page 
-- **Draft 2** : Add database models and CRUD operations for entries
-- **Draft 3**: Add user authentication and user-specific entries
-- **Draft 4**: Add PostgreSQL database
-- **Draft 5**: Add screenshot/video upload capability
-- **Draft 6** (Current): Add OCR for converting text in images to searchable text ✓
+### Prerequisites
 
-## Development Notes
+- Python 3.11+
+- Node 20+
+- PostgreSQL (or use Docker)
 
-Using Django for its robust user management system, admin interface, and enterprise-ready architecture. SQLite for now, will migrate to PostgreSQL later.
+### Backend
 
-## External API Service Example
+```bash
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env            # edit DB_HOST=localhost, add OCR_SPACE_API_KEY
+python manage.py migrate
+python manage.py runserver 127.0.0.1:8000
+```
 
-A separate FastAPI service scaffold is included at `collector_service/` to experiment with an external Python API that connects directly to PostgreSQL.
+### Frontend
 
-See `collector_service/README.md` for setup and run steps.
+```bash
+cd frontend
+npm install
+npm run dev                     # http://localhost:5173/inspire-hub/
+```
 
-## Container Deployment (Apache reverse proxy)
+Vite proxies `/inspire-hub/api` to Django at `127.0.0.1:8000`.
 
-A production-oriented container stack is included:
+### Tests
 
-- `docker-compose.yml` (Postgres + Django + frontend nginx)
-- `Dockerfile` (Django/gunicorn image)
-- `frontend/Dockerfile` (React build served by nginx)
+```bash
+pytest
+```
 
-Quick start:
+## Docker (local build)
 
 ```bash
 cp .env.example .env
@@ -111,5 +100,65 @@ docker compose build
 docker compose up -d
 ```
 
-For Apache reverse proxy setup on your host, see `docs/deploy-apache.md`.
+App at `http://localhost:8080/inspire-hub/`.
 
+## Deployment (Raspberry Pi)
+
+Pre-built ARM images are pushed to GHCR on every merge to `main`/`master`.
+
+```bash
+cd ansible
+ansible-playbook playbooks/deploy.yml --ask-vault-pass
+```
+
+Common tags: `--tags frontend`, `--tags stack`, `--tags env` (refresh `.env`), `--tags full` (default).
+
+See `ansible/inventory/hosts.yml` for host config and vaulted secrets.
+
+## Backups
+
+A cron job on the Pi dumps Postgres and media nightly, uploads to Google Drive via rclone, and removes old local/remote archives.
+
+Setup: [docs/backup-google-drive.md](docs/backup-google-drive.md)
+
+## Monitoring
+
+Netdata runs on the Pi (port 19999). A lightweight HTML dashboard shows CPU, temperature, load, RAM, and disk at a glance.
+
+Setup: [docs/pi-monitoring-dashboard.md](docs/pi-monitoring-dashboard.md)
+
+## Environment variables
+
+See `.env.example` for all options. Key variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `SECRET_KEY` | Django secret key |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | PostgreSQL connection |
+| `OCR_SPACE_API_KEY` | OCR.space API key for text extraction |
+| `ALLOWED_HOSTS` | Django allowed hosts |
+| `CSRF_TRUSTED_ORIGINS` | Trusted origins for CSRF |
+| `URL_PATH_PREFIX` | Subpath mount (e.g. `inspire-hub`) |
+| `SILK_ENABLED` | Enable Silk profiling UI (staff only) |
+
+## API
+
+All endpoints live under `/inspire-hub/api/v1/` (or `/<URL_PATH_PREFIX>/api/v1/`).
+
+| Endpoint | Methods | Auth | Purpose |
+|----------|---------|------|---------|
+| `auth/csrf/` | GET | Public | Set CSRF cookie |
+| `auth/login/` | POST | Public | Session login |
+| `auth/logout/` | POST | Auth | Session logout |
+| `auth/me/` | GET | Auth | Current user |
+| `auth/signup-request/` | POST | Public | Email signup request to admin |
+| `inspirations/` | CRUD | Auth / ReadOnly | Inspirations (public ones visible to guests) |
+| `sources/` | CRUD | Auth | Source library |
+| `sources/isbn-lookup/` | GET | Auth | ISBN lookup via Open Library |
+| `screenshots/` | CRUD | Auth | Screenshot management |
+| `inspiration-drafts/preview/` | POST | Auth | Upload screenshot + OCR preview |
+| `inspiration-drafts/commit/` | POST | Auth | Commit previewed draft |
+
+## License
+
+Personal project.
