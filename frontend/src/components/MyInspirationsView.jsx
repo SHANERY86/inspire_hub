@@ -647,7 +647,9 @@ export function MyInspirationsView({
                 ) : null}
                 <p className="my-inspirations-item-essence">{essenceDisplay}</p>
                 {showQuoteBlock ? (
-                  <p className="my-inspirations-item-quote">{quote}</p>
+                  <blockquote className="my-inspirations-item-quote">
+                    <p>{quote}</p>
+                  </blockquote>
                 ) : null}
                 {thoughts ? (
                   <p className="my-inspirations-detail">

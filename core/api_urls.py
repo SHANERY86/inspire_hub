@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .dictionary_lookup_view import DictionaryLookupAPIView
 from .inspiration_api import (
     InspirationDraftCommitAPIView,
     InspirationDraftPreviewAPIView,
@@ -13,12 +14,13 @@ from .session_auth_views import (
 )
 from .signup_request_view import SignupRequestView
 from .source_isbn_view import SourceISBNLookupAPIView
-from .viewsets import InspirationViewSet, ScreenshotViewSet, SourceViewSet
+from .viewsets import InspirationViewSet, ScreenshotViewSet, SourceViewSet, WordEntryViewSet
 
 router = DefaultRouter()
 router.register(r'inspirations', InspirationViewSet, basename='inspiration')
 router.register(r'screenshots', ScreenshotViewSet, basename='screenshot')
 router.register(r'sources', SourceViewSet, basename='source')
+router.register(r'words', WordEntryViewSet, basename='word-entry')
 
 urlpatterns = [
     path('auth/csrf/', SessionCsrfView.as_view(), name='auth-csrf'),
@@ -30,6 +32,11 @@ urlpatterns = [
         'sources/isbn-lookup/',
         SourceISBNLookupAPIView.as_view(),
         name='source-isbn-lookup',
+    ),
+    path(
+        'words/dictionary-lookup/',
+        DictionaryLookupAPIView.as_view(),
+        name='dictionary-lookup',
     ),
     path(
         'inspiration-drafts/preview/',

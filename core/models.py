@@ -84,3 +84,47 @@ class Screenshot(models.Model):
     def __str__(self):
         return f"Screenshot for {self.inspiration.essence}"
 
+
+class WordEntry(models.Model):
+    """A word discovered while reading, with its chosen definition and usage context."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='word_entries',
+    )
+    word = models.CharField(max_length=255)
+    definition = models.TextField()
+    part_of_speech = models.CharField(max_length=50, blank=True, default='')
+    context_sentence = models.TextField(
+        blank=True,
+        default='',
+        help_text='The sentence from the book where the word was encountered.',
+    )
+    source = models.ForeignKey(
+        'Source',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='word_entries',
+    )
+    is_inspiring = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='When true, this word appears in the home spotlight rotation.',
+    )
+    is_public = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='When true, guests can see this word on the public home spotlight.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'word_entry'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.word} – {self.user}"
+

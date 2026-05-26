@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 /**
- * Remove leading text only when the cut is at a capital letter immediately
- * preceded by a full stop and whitespace (`." + whitespace + "[A-Z]`).
- * If that pattern never appears, the string is unchanged.
+ * Remove leading text only when the string starts mid-sentence (first
+ * non-whitespace character is lowercase).  Finds the first `. [A-Z]`
+ * boundary and cuts everything before the capital.  If the text already
+ * begins with a capital letter the start is a proper sentence boundary
+ * and nothing is trimmed.
  */
 function trimLeadingBeforeCapitalAfterFullStop(s) {
   if (!s) return s
+  if (/^\s*[A-Z]/.test(s)) return s
   const m = s.match(/\.\s+[A-Z]/)
   if (!m || m.index === undefined) return s
   const capIdx = m.index + m[0].length - 1
@@ -144,6 +147,7 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
     if (!kept.length) return
     applyCheckedJustAppliedRef.current = true
     onApply(joinSegments(listMode, kept))
+    setPickerOpen(false)
   }
 
   function handleTrimExtractedField() {
@@ -170,18 +174,21 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
 
   const keptCount = checked.filter(Boolean).length
   const canUndoTrim = preTrimSnapshot.current != null
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   return (
-    <details className="line-pick-details">
-      <summary className="line-pick-summary">Pick parts to keep</summary>
-      <p className="hint line-pick-hint">
-        Select lines below. Trim edges will whip off words you don&apos;t want at the start and end of
-        the block.
-      </p>
-      <div className="line-pick-trim-actions">
+    <div className="line-pick-wrapper">
+      <div className="line-pick-toolbar">
         <button
           type="button"
-          className="secondary"
+          className="line-pick-summary"
+          onClick={() => setPickerOpen((v) => !v)}
+        >
+          Pick parts to keep
+        </button>
+        <button
+          type="button"
+          className="line-pick-summary"
           disabled={!text}
           onClick={handleTrimExtractedField}
         >
@@ -189,41 +196,48 @@ export function ExtractedTextPickerPanel({ text, onApply }) {
         </button>
         <button
           type="button"
-          className="secondary"
+          className="line-pick-summary"
           disabled={!canUndoTrim}
           onClick={handleUndoTrim}
         >
           Undo trim
         </button>
       </div>
-      <ul className="line-pick-list" aria-label="Text chunks to include or exclude">
-        {listSegments.map((seg, i) => (
-          <li key={i} className="line-pick-row">
-            <label className="line-pick-label">
-              <input
-                type="checkbox"
-                checked={checked[i] ?? false}
-                onChange={() => toggleRow(i)}
-              />
-              <span className="line-pick-text">
-                {seg === '' ? (
-                  <em className="line-pick-empty">(blank line)</em>
-                ) : (
-                  seg
-                )}
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        className="line-pick-apply"
-        disabled={keptCount === 0}
-        onClick={handleApply}
-      >
-        Apply checked parts to extracted text
-      </button>
-    </details>
+      {pickerOpen && (
+        <div className="line-pick-details">
+          <p className="hint line-pick-hint">
+            Select lines below.
+          </p>
+          <ul className="line-pick-list" aria-label="Text chunks to include or exclude">
+            {listSegments.map((seg, i) => (
+              <li key={i} className="line-pick-row">
+                <label className="line-pick-label">
+                  <input
+                    type="checkbox"
+                    checked={checked[i] ?? false}
+                    onChange={() => toggleRow(i)}
+                  />
+                  <span className="line-pick-text">
+                    {seg === '' ? (
+                      <em className="line-pick-empty">(blank line)</em>
+                    ) : (
+                      seg
+                    )}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="line-pick-apply"
+            disabled={keptCount === 0}
+            onClick={handleApply}
+          >
+            Apply checked parts to extracted text
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

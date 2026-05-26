@@ -51,15 +51,32 @@ export function HomeView({
   guestHome = false,
   onSignInClick,
   inspirations,
+  words = [],
 }) {
-  // Signed-in: API returns this user's library. Guests: public inspirations only (see viewset).
-  // Shuffle the guest spotlight pool so auto-rotate and random swaps feel like "random public picks".
   const captures = useMemo(() => {
     const pool = guestHome ? inspirations.filter((i) => i.is_public) : inspirations
     const eligible = pool.filter(inspirationHasSpotlightContent)
-    if (guestHome && eligible.length > 1) return shuffleArray(eligible)
-    return eligible
-  }, [inspirations, guestHome])
+
+    const inspiringWords = words
+      .filter((w) => w.is_inspiring && (!guestHome || w.is_public))
+      .map((w) => ({
+        _type: 'word',
+        id: `word-${w.id}`,
+        word: w.word,
+        definition: w.definition,
+        part_of_speech: w.part_of_speech,
+        context_sentence: w.context_sentence,
+        source_title: w.source_title || '',
+      }))
+
+    const combined = [
+      ...eligible.map((i) => ({ ...i, _type: 'inspiration' })),
+      ...inspiringWords,
+    ]
+
+    if (guestHome && combined.length > 1) return shuffleArray(combined)
+    return combined
+  }, [inspirations, words, guestHome])
   const captureIds = useMemo(() => captures.map((c) => c.id).join(','), [captures])
 
   const capturesRef = useRef(captures)
@@ -309,19 +326,24 @@ export function HomeView({
 
   const safeIdx = Math.min(displayIdx, captures.length - 1)
   const active = captures[safeIdx]
-  const shots = Array.isArray(active.screenshots) ? active.screenshots : []
+  const isWord = active._type === 'word'
+  const shots = isWord ? [] : (Array.isArray(active.screenshots) ? active.screenshots : [])
   const showScreenshots = shots.length > 0
-  const captured = inspirationSpotlightPrimaryText(active)
+  const captured = isWord ? '' : inspirationSpotlightPrimaryText(active)
   const fontStack = SPOTLIGHT_FONTS[fontIdx % SPOTLIGHT_FONTS.length].stack
 
-  const contributor = guestHome ? (active.added_by_username || '').trim() : ''
-  const srcTitle = (active.source_display_title ?? '').trim()
-  const workTitle = (srcTitle || (active.source_title || '').trim()).trim()
-  const srcAuthor = (active.source_display_author ?? '').trim()
+  const contributor = guestHome && !isWord ? (active.added_by_username || '').trim() : ''
+  const srcTitle = isWord ? '' : (active.source_display_title ?? '').trim()
+  const workTitle = isWord
+    ? (active.source_title || '').trim()
+    : (srcTitle || (active.source_title || '').trim()).trim()
+  const srcAuthor = isWord ? '' : (active.source_display_author ?? '').trim()
 
-  const showAttribution = guestHome
-    ? Boolean(contributor || workTitle || srcAuthor)
-    : Boolean(workTitle || srcAuthor)
+  const showAttribution = isWord
+    ? Boolean(workTitle)
+    : guestHome
+      ? Boolean(contributor || workTitle || srcAuthor)
+      : Boolean(workTitle || srcAuthor)
 
   const fadeStyle = {
     opacity: visible ? 1 : 0,
@@ -334,7 +356,22 @@ export function HomeView({
 
   const spotlightBody = (
     <div className="home-spotlight-capture-wrap" style={fadeStyle}>
-      {showScreenshots ? (
+      {isWord ? (
+        <div className="home-spotlight-word">
+          <p className="home-spotlight-word-term" style={{ fontFamily: fontStack }}>
+            {active.word}
+          </p>
+          {active.part_of_speech && (
+            <p className="home-spotlight-word-pos">{active.part_of_speech}</p>
+          )}
+          <blockquote className="home-spotlight-word-context">
+            <p>{active.definition}</p>
+          </blockquote>
+          {active.context_sentence && (
+            <p className="home-spotlight-word-context-sentence">{active.context_sentence}</p>
+          )}
+        </div>
+      ) : showScreenshots ? (
         <div className="home-spotlight-shots">
           {shots.map((shot) => {
             const src = resolveMediaUrl(shot.image)

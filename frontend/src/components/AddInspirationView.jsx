@@ -12,6 +12,7 @@ export function AddInspirationView({
   cameraInputRef,
   onCameraCaptureChange,
   onGalleryFilesChange,
+  onRemoveScreenshotFile,
   onPreviewSubmit,
   submitting,
   draftForm,
@@ -160,11 +161,28 @@ export function AddInspirationView({
               {step1Form.is_comic_panel
                 ? 'You can still crop and frame each image before upload. No text recognition runs for comic panels.'
                 : 'After you choose images, you can zoom and frame the area to send to OCR (or use the full image). '}
-              Take photo adds each shot. Library picker replaces the current list.
+              Take photo and library picker both add to the list.
             </p>
           </div>
           {screenshotFiles.length > 0 && (
-            <p className="hint">{screenshotFiles.length} file(s) selected</p>
+            <div className="screenshot-file-list">
+              <p className="hint">{screenshotFiles.length} file(s) selected</p>
+              <ul className="screenshot-file-items">
+                {screenshotFiles.map((f, i) => (
+                  <li key={`${f.name}-${f.lastModified}-${i}`} className="screenshot-file-row">
+                    <span className="screenshot-file-name">{f.name}</span>
+                    <button
+                      type="button"
+                      className="screenshot-file-remove"
+                      onClick={() => onRemoveScreenshotFile(i)}
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           <button type="submit" disabled={submitting}>

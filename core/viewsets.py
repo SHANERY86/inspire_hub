@@ -3,8 +3,13 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 
 from .filters import InspirationFilter, ScreenshotFilter
-from .models import Inspiration, Screenshot, Source
-from .serializers import InspirationSerializer, ScreenshotSerializer, SourceSerializer
+from .models import Inspiration, Screenshot, Source, WordEntry
+from .serializers import (
+    InspirationSerializer,
+    ScreenshotSerializer,
+    SourceSerializer,
+    WordEntrySerializer,
+)
 
 
 class SourceViewSet(viewsets.ModelViewSet):
@@ -47,3 +52,17 @@ class ScreenshotViewSet(viewsets.ModelViewSet):
             .select_related('inspiration')
             .order_by('-uploaded_at')
         )
+
+
+class WordEntryViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    serializer_class = WordEntrySerializer
+
+    def get_queryset(self):
+        qs = WordEntry.objects.select_related('source')
+        if self.request.user.is_authenticated:
+            return qs.filter(user=self.request.user)
+        return qs.filter(is_public=True, is_inspiring=True)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

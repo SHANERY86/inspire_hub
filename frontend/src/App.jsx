@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { AddInspirationView } from './components/AddInspirationView.jsx'
 import { AddSourceView } from './components/AddSourceView.jsx'
+import { AddWordView } from './components/AddWordView.jsx'
 import { HamburgerNav } from './components/HamburgerNav.jsx'
 import { HomeView } from './components/HomeView.jsx'
 import { MyInspirationsView } from './components/MyInspirationsView.jsx'
 import { RequestAccountView } from './components/RequestAccountView.jsx'
 import { ScreenshotCropModal } from './components/ScreenshotCropModal.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
+import { WordLibraryView } from './components/WordLibraryView.jsx'
 import {
   initialAppViewFromLocation,
   spaPathKey,
@@ -65,7 +67,7 @@ const emptyNewSource = {
   notes: '',
 }
 
-/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'addSource' | 'requestAccount'} AppView */
+/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'addSource' | 'wordLibrary' | 'addWord' | 'requestAccount'} AppView */
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -116,6 +118,12 @@ function App() {
   const [selectedSourceId, setSelectedSourceId] = useState(
     /** @type {number | null} */ (null),
   )
+
+  const [words, setWords] = useState([])
+  const [wordsLoading, setWordsLoading] = useState(false)
+  const [wordsError, setWordsError] = useState('')
+  const [wordFormBusy, setWordFormBusy] = useState(false)
+  const [wordFormMessage, setWordFormMessage] = useState('')
 
   const loadInspirations = useCallback(async () => {
     try {
@@ -237,13 +245,38 @@ function App() {
     }
   }, [])
 
+  const loadWords = useCallback(async () => {
+    setWordsLoading(true)
+    setWordsError('')
+    try {
+      const response = await fetch(apiUrl('/api/v1/words/'), {
+        credentials: 'include',
+      })
+      if (response.status === 401 || response.status === 403) {
+        setWords([])
+        return
+      }
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`)
+      }
+      const data = await response.json()
+      setWords(data.results ?? [])
+    } catch (err) {
+      setWordsError(err instanceof Error ? err.message : 'Request failed')
+    } finally {
+      setWordsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    if (currentUser) void loadSources()
-    else {
+    if (currentUser) {
+      void loadSources()
+    } else {
       setSources([])
       setSourcesError('')
     }
-  }, [currentUser, loadSources])
+    void loadWords()
+  }, [currentUser, loadSources, loadWords])
 
   useEffect(() => {
     if (
@@ -349,10 +382,12 @@ function App() {
 
   useEffect(() => {
     if (
-      activeView !== 'addInspiration' ||
-      step !== 1 ||
-      !saveSuccessMessage
+      (activeView !== 'addInspiration' || step !== 1) &&
+      activeView !== 'addWord'
     ) {
+      return
+    }
+    if (!saveSuccessMessage) {
       return
     }
     const id = requestAnimationFrame(() => {
@@ -424,10 +459,11 @@ function App() {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
     if (!files.length) return
-    setScreenshotFiles([])
-    setScreenshotCropReplaceList(true)
-    setScreenshotCropReplaceAccum([])
-    setScreenshotCropQueue(files)
+    setScreenshotCropQueue((q) => [...q, ...files])
+  }
+
+  function onRemoveScreenshotFile(index) {
+    setScreenshotFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   function onCameraCaptureChange(event) {
@@ -491,7 +527,21 @@ function App() {
         is_comic_panel: Boolean(formData.is_comic_panel),
         is_public: Boolean(formData.is_public ?? step1Form.is_public),
       })
-      setDraftScreenshots(data.screenshots ?? [])
+      const shots = data.screenshots ?? []
+      if (
+        shots.length > 1 &&
+        !Boolean(formData.is_comic_panel)
+      ) {
+        const combined = shots
+          .map((s) => (s.extracted_text ?? '').trim())
+          .filter(Boolean)
+          .join('\n')
+        setDraftScreenshots([
+          { ...shots[0], extracted_text: combined },
+        ])
+      } else {
+        setDraftScreenshots(shots)
+      }
       setStep(2)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Preview request failed')
@@ -613,6 +663,115 @@ function App() {
       setSourceFormBusy(false)
     }
   }
+
+  const lookupWord = useCallback(async (word) => {
+    const params = new URLSearchParams({ word })
+    const response = await fetch(
+      apiUrl(`/api/v1/words/dictionary-lookup/?${params.toString()}`),
+      { credentials: 'include' },
+    )
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(
+        typeof body.detail === 'string'
+          ? body.detail
+          : `Lookup failed (${response.status}).`,
+      )
+    }
+    return body
+  }, [])
+
+  const saveWord = useCallback(
+    async (payload) => {
+      setWordFormBusy(true)
+      setWordFormMessage('')
+      try {
+        const csrf = await fetchSessionCsrf()
+        const response = await fetch(apiUrl('/api/v1/words/'), {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf,
+          },
+          body: JSON.stringify(payload),
+        })
+        const body = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          let msg = typeof body.detail === 'string' ? body.detail : ''
+          if (!msg && body && typeof body === 'object') {
+            for (const v of Object.values(body)) {
+              if (Array.isArray(v) && typeof v[0] === 'string') {
+                msg = v[0]
+                break
+              }
+            }
+          }
+          throw new Error(msg || `Could not save (${response.status}).`)
+        }
+        setSaveSuccessMessage('Word successfully saved!')
+        await loadWords()
+      } finally {
+        setWordFormBusy(false)
+      }
+    },
+    [loadWords],
+  )
+
+  const patchWord = useCallback(
+    async (id, body) => {
+      const csrf = await fetchSessionCsrf()
+      const response = await fetch(apiUrl(`/api/v1/words/${id}/`), {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf,
+        },
+        body: JSON.stringify(body),
+      })
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Sign in again to save changes.')
+        }
+        const errBody = await response.json().catch(() => ({}))
+        let msg =
+          typeof errBody.detail === 'string'
+            ? errBody.detail
+            : `Update failed (${response.status}).`
+        const firstField = Object.values(errBody).find((v) => Array.isArray(v))
+        if (firstField?.[0]) msg = String(firstField[0])
+        throw new Error(msg)
+      }
+      await loadWords()
+    },
+    [loadWords],
+  )
+
+  const deleteWord = useCallback(
+    async (id) => {
+      const csrf = await fetchSessionCsrf()
+      const response = await fetch(apiUrl(`/api/v1/words/${id}/`), {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'X-CSRFToken': csrf },
+      })
+      if (response.status === 204) {
+        await loadWords()
+        return
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Sign in again to delete.')
+      }
+      const errBody = await response.json().catch(() => ({}))
+      throw new Error(
+        typeof errBody.detail === 'string'
+          ? errBody.detail
+          : `Delete failed (${response.status}).`,
+      )
+    },
+    [loadWords],
+  )
 
   async function onBarcodeIsbnPhoto(event) {
     const file = event.target.files?.[0]
@@ -820,7 +979,7 @@ function App() {
       setShowLoginForm(false)
       setLoginError('')
     }
-    if (view !== 'addInspiration') {
+    if (view !== 'addInspiration' && view !== 'addWord') {
       setSaveSuccessMessage('')
     }
     setSelectedSourceId(null)
@@ -935,7 +1094,7 @@ function App() {
         </section>
       )}
 
-      {activeView === 'addInspiration' && saveSuccessMessage ? (
+      {(activeView === 'addInspiration' || activeView === 'addWord') && saveSuccessMessage ? (
         <p ref={saveSuccessRef} className="subtitle" role="status">
           {saveSuccessMessage}
         </p>
@@ -949,6 +1108,7 @@ function App() {
           guestHome={!authLoading && !currentUser}
           onSignInClick={() => setShowLoginForm(true)}
           inspirations={inspirations}
+          words={words}
         />
       )}
 
@@ -990,6 +1150,7 @@ function App() {
           cameraInputRef={cameraInputRef}
           onCameraCaptureChange={onCameraCaptureChange}
           onGalleryFilesChange={onGalleryFilesChange}
+          onRemoveScreenshotFile={onRemoveScreenshotFile}
           onPreviewSubmit={onPreviewSubmit}
           submitting={submitting}
           draftForm={draftForm}
@@ -1035,6 +1196,30 @@ function App() {
           barcodeIsbnRef={barcodeIsbnRef}
           onBarcodeIsbnPhoto={onBarcodeIsbnPhoto}
           lookupIsbnForNewSource={lookupIsbnForNewSource}
+        />
+      )}
+
+      {activeView === 'wordLibrary' && (
+        <WordLibraryView
+          words={words}
+          wordsLoading={wordsLoading}
+          wordsError={wordsError}
+          currentUser={currentUser}
+          sources={sources}
+          onPatchWord={patchWord}
+          onDeleteWord={deleteWord}
+          onSignInClick={() => setShowLoginForm(true)}
+        />
+      )}
+
+      {activeView === 'addWord' && (
+        <AddWordView
+          currentUser={currentUser}
+          sources={sources}
+          onLookupWord={lookupWord}
+          onSaveWord={saveWord}
+          wordFormBusy={wordFormBusy}
+          wordFormMessage={wordFormMessage}
         />
       )}
     </main>

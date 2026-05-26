@@ -8,7 +8,7 @@ Explicit per-field declarations are only needed when you override shape or valid
 """
 from rest_framework import serializers
 
-from .models import Inspiration, Screenshot, Source
+from .models import Inspiration, Screenshot, Source, WordEntry
 from .source_isbn import normalize_isbn
 
 
@@ -204,3 +204,43 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
         if request and request.user.is_authenticated:
             q = Source.objects.filter(user=request.user)
         self.fields['source'].queryset = q
+
+
+class WordEntrySerializer(serializers.ModelSerializer):
+    source = serializers.PrimaryKeyRelatedField(
+        allow_null=True,
+        required=False,
+        queryset=Source.objects.none(),
+    )
+    source_title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WordEntry
+        fields = [
+            'id',
+            'word',
+            'definition',
+            'part_of_speech',
+            'context_sentence',
+            'source',
+            'source_title',
+            'is_inspiring',
+            'is_public',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'source_title']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        q = Source.objects.none()
+        if request and request.user.is_authenticated:
+            q = Source.objects.filter(user=request.user)
+        self.fields['source'].queryset = q
+
+    def get_source_title(self, obj):
+        src = getattr(obj, 'source', None)
+        if src is None:
+            return ''
+        return (src.title or '').strip()
