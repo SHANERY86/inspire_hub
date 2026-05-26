@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+
+const WORDS_PAGE_SIZE = 10
 
 export function WordLibraryView({
   words,
@@ -35,6 +37,33 @@ export function WordLibraryView({
     }
     return result
   }, [words, search, sourceFilter, inspiringFilter])
+
+  const [listPage, setListPage] = useState(1)
+
+  const totalFiltered = filtered.length
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / WORDS_PAGE_SIZE))
+  const safeListPage = Math.min(Math.max(1, listPage), totalPages)
+
+  useEffect(() => {
+    setListPage(1)
+  }, [search, sourceFilter, inspiringFilter])
+
+  const pagedRows = useMemo(() => {
+    const start = (safeListPage - 1) * WORDS_PAGE_SIZE
+    return filtered.slice(start, start + WORDS_PAGE_SIZE)
+  }, [filtered, safeListPage])
+
+  const rangeStart = totalFiltered === 0 ? 0 : (safeListPage - 1) * WORDS_PAGE_SIZE + 1
+  const rangeEnd = Math.min(safeListPage * WORDS_PAGE_SIZE, totalFiltered)
+
+  const skipScrollRef = useRef(true)
+  useEffect(() => {
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false
+      return
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+  }, [safeListPage])
 
   if (!currentUser) {
     return (
@@ -118,12 +147,38 @@ export function WordLibraryView({
         </p>
       )}
 
-      {filtered.length > 0 && (
-        <ul className="my-inspirations-list">
-          {filtered.map((w) => (
-            <WordCard key={w.id} word={w} sources={sources} onPatch={onPatchWord} onDelete={onDeleteWord} />
-          ))}
-        </ul>
+      {pagedRows.length > 0 && (
+        <>
+          <ul className="my-inspirations-list">
+            {pagedRows.map((w) => (
+              <WordCard key={w.id} word={w} sources={sources} onPatch={onPatchWord} onDelete={onDeleteWord} />
+            ))}
+          </ul>
+          <nav className="my-inspirations-pagination" aria-label="Word library pages">
+              <button
+                type="button"
+                className="my-inspirations-pagination-btn"
+                disabled={safeListPage <= 1}
+                onClick={() => setListPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <p className="my-inspirations-pagination-status">
+                Page {safeListPage} of {totalPages}
+                <span className="my-inspirations-pagination-range">
+                  {' '}· Showing {rangeStart}–{rangeEnd} of {totalFiltered}
+                </span>
+              </p>
+              <button
+                type="button"
+                className="my-inspirations-pagination-btn"
+                disabled={safeListPage >= totalPages}
+                onClick={() => setListPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </button>
+            </nav>
+        </>
       )}
     </section>
   )

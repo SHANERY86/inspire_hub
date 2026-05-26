@@ -249,18 +249,31 @@ function App() {
     setWordsLoading(true)
     setWordsError('')
     try {
-      const response = await fetch(apiUrl('/api/v1/words/'), {
-        credentials: 'include',
-      })
-      if (response.status === 401 || response.status === 403) {
-        setWords([])
-        return
+      const all = []
+      let page = 1
+      const maxPages = 200
+      while (page <= maxPages) {
+        const qs = new URLSearchParams({ page: String(page) })
+        const response = await fetch(
+          apiUrl(`/api/v1/words/?${qs.toString()}`),
+          { credentials: 'include' },
+        )
+        if (response.status === 401 || response.status === 403) {
+          setWords([])
+          return
+        }
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`)
+        }
+        const data = await response.json()
+        const batch = data.results ?? []
+        all.push(...batch)
+        if (!data.next || batch.length === 0) {
+          break
+        }
+        page += 1
       }
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`)
-      }
-      const data = await response.json()
-      setWords(data.results ?? [])
+      setWords(all)
     } catch (err) {
       setWordsError(err instanceof Error ? err.message : 'Request failed')
     } finally {
