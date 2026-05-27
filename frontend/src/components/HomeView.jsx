@@ -54,7 +54,9 @@ export function HomeView({
   words = [],
 }) {
   const captures = useMemo(() => {
-    const pool = guestHome ? inspirations.filter((i) => i.is_public) : inspirations
+    const pool = inspirations.filter(
+      (i) => i.is_inspiring && (!guestHome || i.is_public),
+    )
     const eligible = pool.filter(inspirationHasSpotlightContent)
 
     const inspiringWords = words

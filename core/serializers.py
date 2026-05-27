@@ -97,6 +97,7 @@ class InspirationSerializer(serializers.ModelSerializer):
             'user_thoughts',
             'source_type',
             'reference',
+            'is_inspiring',
             'is_public',
             'added_by_username',
             'screenshots',
@@ -147,6 +148,23 @@ class InspirationSerializer(serializers.ModelSerializer):
             return ''
         return (getattr(owner, 'username', None) or '').strip()
 
+    def validate(self, attrs):
+        instance = self.instance
+        inspiring = attrs.get(
+            'is_inspiring',
+            instance.is_inspiring if instance is not None else False,
+        )
+
+        if 'is_public' in attrs and attrs['is_public'] and not inspiring:
+            raise serializers.ValidationError({
+                'is_public': 'Mark this inspiration as inspiring before making it public.',
+            })
+
+        if not inspiring:
+            attrs['is_public'] = False
+
+        return attrs
+
 
 class ScreenshotSerializer(serializers.ModelSerializer):
     # Same implicit model→serializer→JSON mapping as InspirationSerializer.
@@ -189,6 +207,7 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
     source_type = serializers.CharField()
     reference = serializers.CharField(allow_blank=True, required=False, default='')
     is_comic_panel = serializers.BooleanField(required=False, default=False)
+    is_inspiring = serializers.BooleanField(required=False, default=False)
     is_public = serializers.BooleanField(required=False, default=False)
     source = serializers.PrimaryKeyRelatedField(
         queryset=Source.objects.none(),
@@ -204,6 +223,20 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
         if request and request.user.is_authenticated:
             q = Source.objects.filter(user=request.user)
         self.fields['source'].queryset = q
+
+    def validate(self, attrs):
+        inspiring = attrs.get('is_inspiring', False)
+        public = attrs.get('is_public', False)
+
+        if public and not inspiring:
+            raise serializers.ValidationError({
+                'is_public': 'Mark this inspiration as inspiring before making it public.',
+            })
+
+        if not inspiring:
+            attrs['is_public'] = False
+
+        return attrs
 
 
 class WordEntrySerializer(serializers.ModelSerializer):

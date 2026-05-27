@@ -44,6 +44,7 @@ class InspirationDraftPreviewAPIView(APIView):
             'reference': request.POST.get('reference', ''),
             'source': source_id,
             'is_comic_panel': comic_panel,
+            'is_inspiring': _post_bool(request.POST.get('is_inspiring')),
             'is_public': _post_bool(request.POST.get('is_public')),
         }
         screenshots = request.FILES.getlist('screenshots')
@@ -102,6 +103,7 @@ class InspirationDraftCommitAPIView(APIView):
             'user_thoughts': payload.get('user_thoughts') or '',
             'source_type': payload['source_type'],
             'reference': payload.get('reference') or '',
+            'is_inspiring': bool(payload.get('is_inspiring')),
             'is_public': bool(payload.get('is_public')),
         }
         screenshot_list = payload.get('screenshots') or []

@@ -54,6 +54,11 @@ class Inspiration(models.Model):
         on_delete=models.SET_NULL,
         related_name='inspirations',
     )
+    is_inspiring = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text='When true, this inspiration appears in the home spotlight rotation.',
+    )
     is_public = models.BooleanField(
         default=False,
         db_index=True,

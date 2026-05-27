@@ -220,6 +220,7 @@ export function MyInspirationsView({
       reference: i.reference ?? '',
       quote: i.quote ?? '',
       source: i.source ?? null,
+      is_inspiring: Boolean(i.is_inspiring),
       is_public: Boolean(i.is_public),
     })
   }
@@ -227,6 +228,12 @@ export function MyInspirationsView({
   function onEditFieldChange(event) {
     const { name, value, type, checked } = event.target
     if (!editRow) return
+    if (type === 'checkbox' && name === 'is_inspiring') {
+      setEditRow((prev) =>
+        prev ? { ...prev, is_inspiring: checked, is_public: checked ? prev.is_public : false } : prev,
+      )
+      return
+    }
     if (type === 'checkbox' && name === 'is_public') {
       setEditRow((prev) => (prev ? { ...prev, is_public: checked } : prev))
       return
@@ -262,7 +269,8 @@ export function MyInspirationsView({
         reference: editRow.reference,
         quote: editRow.quote,
         source: editRow.source,
-        is_public: Boolean(editRow.is_public),
+        is_inspiring: Boolean(editRow.is_inspiring),
+        is_public: Boolean(editRow.is_inspiring && editRow.is_public),
       })
       setEditRow(null)
     } catch (err) {
@@ -460,12 +468,23 @@ export function MyInspirationsView({
             <label className="checkbox-row">
               <input
                 type="checkbox"
-                name="is_public"
-                checked={Boolean(editRow.is_public)}
+                name="is_inspiring"
+                checked={Boolean(editRow.is_inspiring)}
                 onChange={onEditFieldChange}
               />
-              Show on public home page (visitors without an account can see this inspiration)
+              Inspiring — show on home page spotlight
             </label>
+            {editRow.is_inspiring && (
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  name="is_public"
+                  checked={Boolean(editRow.is_public)}
+                  onChange={onEditFieldChange}
+                />
+                Public — visitors without an account can see this inspiration
+              </label>
+            )}
             {actionError ? <p className="error">{actionError}</p> : null}
             <div className="my-inspirations-edit-actions">
               <button type="submit" disabled={actionBusy}>

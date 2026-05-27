@@ -1794,12 +1794,17 @@ button.secondary:hover {
   min-width: 0;
 }
 
-.my-inspirations-edit-dialog .form label > input,
+.my-inspirations-edit-dialog .form label > input:not([type='checkbox']),
 .my-inspirations-edit-dialog .form label > select,
 .my-inspirations-edit-dialog .form label > textarea {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+.my-inspirations-edit-dialog .form label.checkbox-row > input[type='checkbox'] {
+  width: auto;
+  flex-shrink: 0;
 }
 
 .my-inspirations-edit-actions {

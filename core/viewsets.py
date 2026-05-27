@@ -35,7 +35,7 @@ class InspirationViewSet(viewsets.ModelViewSet):
         )
         if self.request.user.is_authenticated:
             return base.filter(user=self.request.user).order_by('-date')
-        return base.filter(is_public=True).order_by('-date')
+        return base.filter(is_public=True, is_inspiring=True).order_by('-date')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
