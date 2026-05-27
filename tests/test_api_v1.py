@@ -559,6 +559,7 @@ class TestInspirationDraftCommit:
             'user_thoughts': '',
             'source_type': 'book',
             'reference': '',
+            'is_inspiring': True,
             'is_public': True,
             'screenshots': [
                 {
@@ -574,8 +575,31 @@ class TestInspirationDraftCommit:
             format='json',
         )
         assert r.status_code == status.HTTP_201_CREATED
+        assert r.data['is_inspiring'] is True
         assert r.data['is_public'] is True
-        assert Inspiration.objects.get(pk=r.data['id']).is_public is True
+        ins = Inspiration.objects.get(pk=r.data['id'])
+        assert ins.is_inspiring is True
+        assert ins.is_public is True
+
+    def test_commit_rejects_is_public_without_is_inspiring(
+        self, authenticated_api_client, api_user
+    ):
+        payload = {
+            'source_title': 'Public title',
+            'essence': 'Pub e',
+            'user_thoughts': '',
+            'source_type': 'book',
+            'reference': '',
+            'is_public': True,
+            'screenshots': [],
+        }
+        r = authenticated_api_client.post(
+            '/api/v1/inspiration-drafts/commit/',
+            payload,
+            format='json',
+        )
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'is_public' in r.data
 
     def test_commit_rejects_other_users_source(
         self, authenticated_api_client, django_user_model
