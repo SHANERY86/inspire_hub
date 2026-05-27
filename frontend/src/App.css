@@ -1661,7 +1661,6 @@ button.secondary:hover {
   line-height: 1.55;
   letter-spacing: 0.01em;
   color: rgba(255, 255, 255, 0.97);
-  white-space: pre-wrap;
 }
 
 .my-inspirations-detail {

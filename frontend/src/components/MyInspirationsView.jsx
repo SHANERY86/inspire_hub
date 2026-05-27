@@ -28,6 +28,11 @@ function sourceSortKey(i) {
   return (linked || work).toLowerCase()
 }
 
+/** Turn OCR / soft line breaks into flowing prose for list display. */
+function flowQuoteText(text) {
+  return text.replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ').trim()
+}
+
 const SORT_OPTIONS = [
   { value: 'date-desc', label: 'Date · newest first' },
   { value: 'date-asc', label: 'Date · oldest first' },
@@ -667,7 +672,7 @@ export function MyInspirationsView({
                 <p className="my-inspirations-item-essence">{essenceDisplay}</p>
                 {showQuoteBlock ? (
                   <blockquote className="my-inspirations-item-quote">
-                    <p>{quote}</p>
+                    <p>{flowQuoteText(quote)}</p>
                   </blockquote>
                 ) : null}
                 {thoughts ? (
