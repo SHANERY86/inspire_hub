@@ -112,6 +112,10 @@ export function HomeView({
   const prevVisibleRef = useRef(true)
   const fadeInArrowsTimerRef = useRef(null)
   const touchHideTimerRef = useRef(null)
+  const historyRef = useRef(/** @type {number[]} */ ([]))
+  const historyPosRef = useRef(-1)
+  const fontIdxRef = useRef(fontIdx)
+  fontIdxRef.current = fontIdx
 
   useEffect(() => {
     const mql = window.matchMedia('(hover: none), (pointer: coarse)')
@@ -209,8 +213,14 @@ export function HomeView({
   const applyRandomSwap = useCallback(() => {
     const list = capturesRef.current
     if (!list.length) return
-    setDisplayIdx((prev) => pickDifferentIndex(prev, list.length))
-    setFontIdx((prev) => pickDifferentIndex(prev, SPOTLIGHT_FONTS.length))
+    const currentIdx = historyRef.current[historyPosRef.current] ?? 0
+    const newIdx = pickDifferentIndex(currentIdx, list.length)
+    const newFontIdx = pickDifferentIndex(fontIdxRef.current, SPOTLIGHT_FONTS.length)
+    historyRef.current = historyRef.current.slice(0, historyPosRef.current + 1)
+    historyRef.current.push(newIdx)
+    historyPosRef.current = historyRef.current.length - 1
+    setDisplayIdx(newIdx)
+    setFontIdx(newFontIdx)
   }, [])
 
   const fadeThenSwap = useCallback(() => {
@@ -235,10 +245,22 @@ export function HomeView({
     (delta) => {
       const list = capturesRef.current
       if (list.length <= 1) return
+      if (delta < 0 && historyPosRef.current <= 0) return
       clearTimers()
       setVisible(false)
       timeoutRef.current = window.setTimeout(() => {
-        setDisplayIdx((prev) => (prev + delta + list.length) % list.length)
+        if (delta < 0) {
+          historyPosRef.current -= 1
+          setDisplayIdx(historyRef.current[historyPosRef.current])
+        } else {
+          const currentIdx = historyRef.current[historyPosRef.current] ?? 0
+          const newIdx = pickDifferentIndex(currentIdx, list.length)
+          historyRef.current = historyRef.current.slice(0, historyPosRef.current + 1)
+          historyRef.current.push(newIdx)
+          historyPosRef.current = historyRef.current.length - 1
+          setDisplayIdx(newIdx)
+          setFontIdx((prev) => pickDifferentIndex(prev, SPOTLIGHT_FONTS.length))
+        }
         setVisible(true)
         timeoutRef.current = null
         scheduleAutoRotate()
@@ -250,21 +272,31 @@ export function HomeView({
   useEffect(() => {
     if (captures.length === 0) {
       randomInitRef.current = false
+      historyRef.current = []
+      historyPosRef.current = -1
       clearTimers()
       return
     }
     if (!randomInitRef.current) {
       randomInitRef.current = true
-      setDisplayIdx(Math.floor(Math.random() * captures.length))
+      const idx = Math.floor(Math.random() * captures.length)
+      historyRef.current = [idx]
+      historyPosRef.current = 0
+      setDisplayIdx(idx)
       setFontIdx(Math.floor(Math.random() * SPOTLIGHT_FONTS.length))
       setVisible(true)
       if (captures.length > 1) {
         flashArrowsBriefly()
       }
     } else {
-      setDisplayIdx((d) =>
-        Math.min(Math.max(0, d), Math.max(0, captures.length - 1)),
-      )
+      historyRef.current = []
+      historyPosRef.current = -1
+      setDisplayIdx((d) => {
+        const clamped = Math.min(Math.max(0, d), Math.max(0, captures.length - 1))
+        historyRef.current = [clamped]
+        historyPosRef.current = 0
+        return clamped
+      })
     }
   }, [captureIds, captures.length, clearTimers, flashArrowsBriefly])
 
