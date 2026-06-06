@@ -12,21 +12,42 @@ export function RecipesView({
   onPatchRecipe,
   onDeleteRecipe,
   onSignInClick,
+  onFetchPublicRecipes,
 }) {
   const [tab, setTab] = useState('list')
+  const [publicOnly, setPublicOnly] = useState(false)
+  const [publicItems, setPublicItems] = useState([])
+  const [publicLoading, setPublicLoading] = useState(false)
+  const [publicError, setPublicError] = useState('')
   const [page, setPage] = useState(1)
 
-  const totalPages = Math.max(1, Math.ceil(recipes.length / PAGE_SIZE))
+  useEffect(() => {
+    if (!publicOnly) {
+      setPublicItems([])
+      setPublicError('')
+      return
+    }
+    setPublicLoading(true)
+    setPublicError('')
+    onFetchPublicRecipes?.()
+      .then((items) => setPublicItems(items))
+      .catch((err) => setPublicError(err?.message || 'Could not load public recipes.'))
+      .finally(() => setPublicLoading(false))
+  }, [publicOnly, onFetchPublicRecipes])
+
+  const displayRecipes = publicOnly ? publicItems : recipes
+
+  const totalPages = Math.max(1, Math.ceil(displayRecipes.length / PAGE_SIZE))
   const safePage = Math.min(Math.max(1, page), totalPages)
   const pagedRecipes = useMemo(() => {
     const start = (safePage - 1) * PAGE_SIZE
-    return recipes.slice(start, start + PAGE_SIZE)
-  }, [recipes, safePage])
+    return displayRecipes.slice(start, start + PAGE_SIZE)
+  }, [displayRecipes, safePage])
 
-  const rangeStart = recipes.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
-  const rangeEnd = Math.min(safePage * PAGE_SIZE, recipes.length)
+  const rangeStart = displayRecipes.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, displayRecipes.length)
 
-  useEffect(() => { setPage(1) }, [recipes.length])
+  useEffect(() => { setPage(1) }, [publicOnly])
 
   const skipScrollRef = useRef(true)
   useEffect(() => {
@@ -58,7 +79,7 @@ export function RecipesView({
           className={`recipe-tab-btn${tab === 'list' ? ' is-active' : ''}`}
           onClick={() => setTab('list')}
         >
-          My recipes ({recipes.length})
+          {publicOnly ? `Public recipes (${displayRecipes.length})` : `My recipes (${recipes.length})`}
         </button>
         <button
           type="button"
@@ -81,22 +102,29 @@ export function RecipesView({
 
       {tab === 'list' && (
         <>
-          {recipesLoading && <p className="hint">Loading…</p>}
+          <label className="checkbox-row" style={{ marginBottom: '0.75rem' }}>
+            <input
+              type="checkbox"
+              checked={publicOnly}
+              onChange={(e) => setPublicOnly(e.target.checked)}
+            />
+            Public
+          </label>
+          {(recipesLoading || publicLoading) && <p className="hint">Loading…</p>}
           {recipesError && <p className="error">{recipesError}</p>}
-          {!recipesLoading && recipes.length === 0 && (
+          {publicError && <p className="error">{publicError}</p>}
+          {!recipesLoading && !publicLoading && displayRecipes.length === 0 && (
             <p className="hint" style={{ textAlign: 'center' }}>
-              No recipes yet.{' '}
-              <button
-                type="button"
-                className="app-guest-intro-link"
-                onClick={() => setTab('add')}
-              >
-                Add your first one
-              </button>
-              .
+              {publicOnly ? 'No public recipes found.' : (
+                <>No recipes yet.{' '}
+                  <button type="button" className="app-guest-intro-link" onClick={() => setTab('add')}>
+                    Add your first one
+                  </button>.
+                </>
+              )}
             </p>
           )}
-          {recipes.length > 0 && (
+          {displayRecipes.length > 0 && (
             <>
               <ul className="my-inspirations-list">
                 {pagedRecipes.map((r) => (
@@ -105,6 +133,7 @@ export function RecipesView({
                     recipe={r}
                     onPatch={onPatchRecipe}
                     onDelete={onDeleteRecipe}
+                    readOnly={publicOnly}
                   />
                 ))}
               </ul>
@@ -121,7 +150,7 @@ export function RecipesView({
                   <p className="my-inspirations-pagination-status">
                     Page {safePage} of {totalPages}
                     <span className="my-inspirations-pagination-range">
-                      {' '}· Showing {rangeStart}–{rangeEnd} of {recipes.length}
+                      {' '}· Showing {rangeStart}–{rangeEnd} of {displayRecipes.length}
                     </span>
                   </p>
                   <button
@@ -331,7 +360,7 @@ function AddRecipeForm({ onScrapeUrl, onSave }) {
   )
 }
 
-function RecipeCard({ recipe: r, onPatch, onDelete }) {
+function RecipeCard({ recipe: r, onPatch, onDelete, readOnly = false }) {
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -516,19 +545,21 @@ function RecipeCard({ recipe: r, onPatch, onDelete }) {
         Saved {new Date(r.created_at).toLocaleDateString()}
       </p>
 
-      <div className="my-inspirations-row-actions">
-        <button type="button" className="my-inspirations-edit-btn" onClick={openEdit}>Edit</button>
-        {!confirmDelete ? (
-          <button type="button" className="my-inspirations-delete-btn" onClick={() => setConfirmDelete(true)}>Delete</button>
-        ) : (
-          <>
-            <button type="button" className="my-inspirations-delete-btn" disabled={deleting} onClick={handleDelete}>
-              {deleting ? 'Deleting…' : 'Confirm delete'}
-            </button>
-            <button type="button" className="secondary" disabled={deleting} onClick={() => setConfirmDelete(false)}>Cancel</button>
-          </>
-        )}
-      </div>
+      {!readOnly && (
+        <div className="my-inspirations-row-actions">
+          <button type="button" className="my-inspirations-edit-btn" onClick={openEdit}>Edit</button>
+          {!confirmDelete ? (
+            <button type="button" className="my-inspirations-delete-btn" onClick={() => setConfirmDelete(true)}>Delete</button>
+          ) : (
+            <>
+              <button type="button" className="my-inspirations-delete-btn" disabled={deleting} onClick={handleDelete}>
+                {deleting ? 'Deleting…' : 'Confirm delete'}
+              </button>
+              <button type="button" className="secondary" disabled={deleting} onClick={() => setConfirmDelete(false)}>Cancel</button>
+            </>
+          )}
+        </div>
+      )}
     </li>
   )
 }

@@ -34,6 +34,8 @@ class InspirationViewSet(viewsets.ModelViewSet):
         base = Inspiration.objects.select_related('source', 'user').prefetch_related(
             Prefetch('screenshots', queryset=shot_qs)
         )
+        if self.request.query_params.get('public'):
+            return base.filter(is_public=True).order_by('-date')
         if self.request.user.is_authenticated:
             return base.filter(user=self.request.user).order_by('-date')
         return base.filter(is_public=True, is_inspiring=True).order_by('-date')
@@ -61,6 +63,8 @@ class WordEntryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = WordEntry.objects.select_related('source')
+        if self.request.query_params.get('public'):
+            return qs.filter(is_public=True)
         if self.request.user.is_authenticated:
             return qs.filter(user=self.request.user)
         return qs.filter(is_public=True, is_inspiring=True)
@@ -74,6 +78,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     serializer_class = RecipeSerializer
 
     def get_queryset(self):
+        if self.request.query_params.get('public'):
+            return Recipe.objects.filter(is_public=True)
         if self.request.user.is_authenticated:
             return Recipe.objects.filter(user=self.request.user)
         return Recipe.objects.filter(is_public=True, is_inspiring=True)

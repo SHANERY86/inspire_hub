@@ -11,13 +11,34 @@ export function WordLibraryView({
   onPatchWord,
   onDeleteWord,
   onSignInClick,
+  onFetchPublicWords,
 }) {
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('')
   const [inspiringFilter, setInspiringFilter] = useState('all')
+  const [publicOnly, setPublicOnly] = useState(false)
+  const [publicItems, setPublicItems] = useState([])
+  const [publicLoading, setPublicLoading] = useState(false)
+  const [publicError, setPublicError] = useState('')
+
+  useEffect(() => {
+    if (!publicOnly) {
+      setPublicItems([])
+      setPublicError('')
+      return
+    }
+    setPublicLoading(true)
+    setPublicError('')
+    onFetchPublicWords?.()
+      .then((items) => setPublicItems(items))
+      .catch((err) => setPublicError(err?.message || 'Could not load public words.'))
+      .finally(() => setPublicLoading(false))
+  }, [publicOnly, onFetchPublicWords])
+
+  const baseList = publicOnly ? publicItems : words
 
   const filtered = useMemo(() => {
-    let result = words
+    let result = baseList
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       result = result.filter(
@@ -27,7 +48,7 @@ export function WordLibraryView({
           (w.context_sentence || '').toLowerCase().includes(q),
       )
     }
-    if (sourceFilter) {
+    if (!publicOnly && sourceFilter) {
       result = result.filter((w) => String(w.source) === sourceFilter)
     }
     if (inspiringFilter === 'inspiring') {
@@ -36,7 +57,7 @@ export function WordLibraryView({
       result = result.filter((w) => !w.is_inspiring)
     }
     return result
-  }, [words, search, sourceFilter, inspiringFilter])
+  }, [baseList, search, sourceFilter, inspiringFilter, publicOnly])
 
   const [listPage, setListPage] = useState(1)
 
@@ -46,7 +67,7 @@ export function WordLibraryView({
 
   useEffect(() => {
     setListPage(1)
-  }, [search, sourceFilter, inspiringFilter])
+  }, [search, sourceFilter, inspiringFilter, publicOnly])
 
   const pagedRows = useMemo(() => {
     const start = (safeListPage - 1) * WORDS_PAGE_SIZE
@@ -83,10 +104,12 @@ export function WordLibraryView({
     <section className="view-panel word-library-view my-inspirations-view--sheet">
       <h1 className="my-inspirations-page-title">Word library</h1>
       <p className="my-inspirations-lead">
-        {words.length} {words.length === 1 ? 'word' : 'words'} collected
+        {publicOnly
+          ? `${baseList.length} public ${baseList.length === 1 ? 'word' : 'words'}`
+          : `${words.length} ${words.length === 1 ? 'word' : 'words'} collected`}
       </p>
 
-      {words.length > 0 && (
+      {(words.length > 0 || publicOnly) && (
         <>
           <div className="my-inspirations-search-row">
             <label className="my-inspirations-search">
@@ -130,20 +153,31 @@ export function WordLibraryView({
                 </select>
               </label>
             )}
+            <label className="checkbox-row my-inspirations-sort">
+              <input
+                type="checkbox"
+                checked={publicOnly}
+                onChange={(e) => setPublicOnly(e.target.checked)}
+              />
+              Public
+            </label>
           </div>
         </>
       )}
 
-      {wordsLoading && <p className="hint">Loading…</p>}
+      {(wordsLoading || publicLoading) && <p className="hint">Loading…</p>}
       {wordsError && <p className="error">{wordsError}</p>}
+      {publicError && <p className="error">{publicError}</p>}
 
-      {!wordsLoading && filtered.length === 0 && words.length > 0 && (
+      {!wordsLoading && !publicLoading && filtered.length === 0 && baseList.length > 0 && (
         <p className="my-inspirations-filter-empty">No words match your search.</p>
       )}
 
-      {!wordsLoading && words.length === 0 && (
+      {!wordsLoading && !publicLoading && baseList.length === 0 && (
         <p className="hint" style={{ textAlign: 'center' }}>
-          No words yet. Use <strong>Add word</strong> to start building your library.
+          {publicOnly
+            ? 'No public words found.'
+            : <>No words yet. Use <strong>Add word</strong> to start building your library.</>}
         </p>
       )}
 
@@ -151,7 +185,7 @@ export function WordLibraryView({
         <>
           <ul className="my-inspirations-list">
             {pagedRows.map((w) => (
-              <WordCard key={w.id} word={w} sources={sources} onPatch={onPatchWord} onDelete={onDeleteWord} />
+              <WordCard key={w.id} word={w} sources={sources} onPatch={onPatchWord} onDelete={onDeleteWord} readOnly={publicOnly} />
             ))}
           </ul>
           <nav className="my-inspirations-pagination" aria-label="Word library pages">
@@ -184,7 +218,7 @@ export function WordLibraryView({
   )
 }
 
-function WordCard({ word: w, sources, onPatch, onDelete }) {
+function WordCard({ word: w, sources, onPatch, onDelete, readOnly = false }) {
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -372,43 +406,45 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
       <p className="my-inspirations-meta">
         Added {new Date(w.created_at).toLocaleDateString()}
       </p>
-      <div className="my-inspirations-row-actions">
-        <button
-          type="button"
-          className="my-inspirations-edit-btn"
-          onClick={openEdit}
-        >
-          Edit
-        </button>
-        {!confirmDelete ? (
+      {!readOnly && (
+        <div className="my-inspirations-row-actions">
           <button
             type="button"
-            className="my-inspirations-delete-btn"
-            onClick={() => setConfirmDelete(true)}
+            className="my-inspirations-edit-btn"
+            onClick={openEdit}
           >
-            Delete
+            Edit
           </button>
-        ) : (
-          <>
+          {!confirmDelete ? (
             <button
               type="button"
               className="my-inspirations-delete-btn"
-              disabled={deleting}
-              onClick={handleDelete}
+              onClick={() => setConfirmDelete(true)}
             >
-              {deleting ? 'Deleting…' : 'Confirm delete'}
+              Delete
             </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={deleting}
-              onClick={() => setConfirmDelete(false)}
-            >
-              Cancel
-            </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="my-inspirations-delete-btn"
+                disabled={deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? 'Deleting…' : 'Confirm delete'}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={deleting}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </li>
   )
 }

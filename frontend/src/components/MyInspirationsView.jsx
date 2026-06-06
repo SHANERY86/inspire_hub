@@ -76,6 +76,7 @@ export function MyInspirationsView({
   onDeleteInspiration,
   /** When set, filter list to this saved source; null clears the source filter. */
   initialSourceFilterId = null,
+  onFetchPublicInspirations,
 }) {
   const [lightboxSrc, setLightboxSrc] = useState(/** @type {string | null} */ (null))
   const [editRow, setEditRow] = useState(null)
@@ -84,8 +85,28 @@ export function MyInspirationsView({
   const [sortBy, setSortBy] = useState('date-desc')
   const [filterSourceId, setFilterSourceId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [publicOnly, setPublicOnly] = useState(false)
+  const [publicItems, setPublicItems] = useState([])
+  const [publicLoading, setPublicLoading] = useState(false)
+  const [publicError, setPublicError] = useState('')
   const [listPage, setListPage] = useState(1)
   const listTopRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+
+  useEffect(() => {
+    if (!publicOnly) {
+      setPublicItems([])
+      setPublicError('')
+      return
+    }
+    setPublicLoading(true)
+    setPublicError('')
+    onFetchPublicInspirations?.()
+      .then((items) => setPublicItems(items))
+      .catch((err) => setPublicError(err?.message || 'Could not load public inspirations.'))
+      .finally(() => setPublicLoading(false))
+  }, [publicOnly, onFetchPublicInspirations])
+
+  const baseList = publicOnly ? publicItems : inspirations
 
   useEffect(() => {
     if (initialSourceFilterId == null) {
@@ -96,7 +117,7 @@ export function MyInspirationsView({
   }, [initialSourceFilterId])
 
   const sourceFiltered = useMemo(() => {
-    let list = [...inspirations]
+    let list = [...baseList]
     if (filterSourceId === FILTER_NO_SOURCE) {
       list = list.filter((i) => i.source == null)
     } else if (filterSourceId !== '') {
@@ -106,7 +127,7 @@ export function MyInspirationsView({
       }
     }
     return list
-  }, [inspirations, filterSourceId])
+  }, [baseList, filterSourceId])
 
   const filteredAndSorted = useMemo(() => {
     let list = [...sourceFiltered]
@@ -157,7 +178,7 @@ export function MyInspirationsView({
 
   useEffect(() => {
     setListPage(1)
-  }, [searchQuery, filterSourceId])
+  }, [searchQuery, filterSourceId, publicOnly])
 
   const pagedRows = useMemo(() => {
     const start = (safeListPage - 1) * INSPIRATIONS_PAGE_SIZE
@@ -529,10 +550,11 @@ export function MyInspirationsView({
 
       {actionError && !editRow ? <p className="error">{actionError}</p> : null}
 
-      {loading && <p className="hint">Loading…</p>}
-      {error && !loading && <p className="error">{error}</p>}
+      {(loading || publicLoading) && <p className="hint">Loading…</p>}
+      {(error && !loading) && <p className="error">{error}</p>}
+      {publicError && <p className="error">{publicError}</p>}
 
-      {!loading && !error && inspirations.length > 0 && (
+      {!loading && !publicLoading && !error && !publicError && baseList.length > 0 && (
         <>
           <div className="my-inspirations-search-row">
             <label className="my-inspirations-search">
@@ -585,19 +607,29 @@ export function MyInspirationsView({
               ))}
             </select>
           </label>
+          <label className="checkbox-row my-inspirations-sort">
+            <input
+              type="checkbox"
+              checked={publicOnly}
+              onChange={(e) => { setPublicOnly(e.target.checked); setListPage(1) }}
+            />
+            Public
+          </label>
         </div>
         </>
       )}
 
-      {!loading && !error && inspirations.length === 0 && (
+      {!loading && !publicLoading && !error && !publicError && baseList.length === 0 && (
         <p className="hint">
-          No inspirations yet. Use <strong>Add inspiration</strong> in the menu to create one.
+          {publicOnly
+            ? 'No public inspirations found.'
+            : <>No inspirations yet. Use <strong>Add inspiration</strong> in the menu to create one.</>}
         </p>
       )}
 
-      {!loading &&
-        !error &&
-        inspirations.length > 0 &&
+      {!loading && !publicLoading &&
+        !error && !publicError &&
+        baseList.length > 0 &&
         filteredAndSorted.length === 0 && (
           <p className="hint my-inspirations-filter-empty">
             {searchQuery.trim() && sourceFiltered.length > 0 ? (
@@ -620,7 +652,7 @@ export function MyInspirationsView({
           </p>
         )}
 
-      {!loading && !error && inspirations.length > 0 && filteredAndSorted.length > 0 && (
+      {!loading && !publicLoading && !error && !publicError && baseList.length > 0 && filteredAndSorted.length > 0 && (
         <div ref={listTopRef} className="my-inspirations-list-block">
           <ul className="my-inspirations-list">
             {pagedRows.map((i) => {
@@ -639,24 +671,26 @@ export function MyInspirationsView({
 
             return (
               <li key={i.id} className="my-inspirations-list-item">
-                <div className="my-inspirations-row-actions">
-                  <button
-                    type="button"
-                    className="my-inspirations-edit-btn"
-                    disabled={actionBusy}
-                    onClick={() => openEdit(i)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="my-inspirations-delete-btn"
-                    disabled={actionBusy}
-                    onClick={() => handleDelete(i)}
-                  >
-                    Delete
-                  </button>
-                </div>
+                {!publicOnly && (
+                  <div className="my-inspirations-row-actions">
+                    <button
+                      type="button"
+                      className="my-inspirations-edit-btn"
+                      disabled={actionBusy}
+                      onClick={() => openEdit(i)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="my-inspirations-delete-btn"
+                      disabled={actionBusy}
+                      onClick={() => handleDelete(i)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
                 {shots.length > 0 ? (
                   <div className="my-inspirations-shots">
                     {shots.map((shot) => {

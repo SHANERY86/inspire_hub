@@ -322,7 +322,8 @@ function App() {
       setSourcesError('')
     }
     void loadWords()
-  }, [currentUser, loadSources, loadWords])
+    void loadRecipes()
+  }, [currentUser, loadSources, loadWords, loadRecipes])
 
   useEffect(() => {
     if (
@@ -363,7 +364,6 @@ function App() {
       }
       if (!cancelled) {
         await loadInspirations()
-        void loadRecipes()
       }
     }
 
@@ -371,7 +371,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [loadInspirations, loadRecipes])
+  }, [loadInspirations])
 
   const submitSignupRequest = useCallback(async (payload) => {
     const csrf = await fetchSessionCsrf()
@@ -864,6 +864,26 @@ function App() {
     [loadWords],
   )
 
+  const fetchPublicItems = useCallback(async (path) => {
+    const all = []
+    let page = 1
+    while (page <= 200) {
+      const qs = new URLSearchParams({ page: String(page), public: 'true' })
+      const response = await fetch(apiUrl(`${path}?${qs.toString()}`), { credentials: 'include' })
+      if (!response.ok) throw new Error(`API returned ${response.status}`)
+      const data = await response.json()
+      const batch = data.results ?? []
+      all.push(...batch)
+      if (!data.next || batch.length === 0) break
+      page += 1
+    }
+    return all
+  }, [])
+
+  const fetchPublicInspirations = useCallback(() => fetchPublicItems('/api/v1/inspirations/'), [fetchPublicItems])
+  const fetchPublicWords = useCallback(() => fetchPublicItems('/api/v1/words/'), [fetchPublicItems])
+  const fetchPublicRecipes = useCallback(() => fetchPublicItems('/api/v1/recipes/'), [fetchPublicItems])
+
   const scrapeRecipeUrl = useCallback(async (url) => {
     const csrf = await fetchSessionCsrf()
     const response = await fetch(apiUrl('/api/v1/recipes/scrape/'), {
@@ -1292,6 +1312,7 @@ function App() {
           onPatchInspiration={patchInspiration}
           onDeleteInspiration={deleteInspirationById}
           initialSourceFilterId={selectedSourceId}
+          onFetchPublicInspirations={fetchPublicInspirations}
         />
       )}
 
@@ -1374,6 +1395,7 @@ function App() {
           onPatchRecipe={patchRecipe}
           onDeleteRecipe={deleteRecipe}
           onSignInClick={() => setShowLoginForm(true)}
+          onFetchPublicRecipes={fetchPublicRecipes}
         />
       )}
 
@@ -1387,6 +1409,7 @@ function App() {
           onPatchWord={patchWord}
           onDeleteWord={deleteWord}
           onSignInClick={() => setShowLoginForm(true)}
+          onFetchPublicWords={fetchPublicWords}
         />
       )}
 
