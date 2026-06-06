@@ -9,6 +9,7 @@ import { MyInspirationsView } from './components/MyInspirationsView.jsx'
 import { RequestAccountView } from './components/RequestAccountView.jsx'
 import { ScreenshotCropModal } from './components/ScreenshotCropModal.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
+import { TagSearchView } from './components/TagSearchView.jsx'
 import { WordLibraryView } from './components/WordLibraryView.jsx'
 import {
   initialAppViewFromLocation,
@@ -69,7 +70,7 @@ const emptyNewSource = {
   notes: '',
 }
 
-/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'addSource' | 'wordLibrary' | 'addWord' | 'requestAccount'} AppView */
+/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'addSource' | 'wordLibrary' | 'addWord' | 'tagSearch' | 'requestAccount'} AppView */
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -1243,6 +1244,13 @@ function App() {
           barcodeIsbnRef={barcodeIsbnRef}
           onBarcodeIsbnPhoto={onBarcodeIsbnPhoto}
           lookupIsbnForNewSource={lookupIsbnForNewSource}
+        />
+      )}
+
+      {activeView === 'tagSearch' && (
+        <TagSearchView
+          inspirations={inspirations}
+          words={words}
         />
       )}
 

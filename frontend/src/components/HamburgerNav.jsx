@@ -100,6 +100,16 @@ export function HamburgerNav({
                   <li>
                     <button
                       type="button"
+                      className={`nav-menu-item${activeView === 'tagSearch' ? ' is-active' : ''}`}
+                      onClick={() => onSelect('tagSearch')}
+                    >
+                      Search by tag
+                    </button>
+                  </li>
+                  <li className="nav-menu-divider" role="presentation" />
+                  <li>
+                    <button
+                      type="button"
                       className={`nav-menu-item${activeView === 'wordLibrary' ? ' is-active' : ''}`}
                       onClick={() => onSelect('wordLibrary')}
                     >
