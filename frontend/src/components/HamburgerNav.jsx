@@ -126,6 +126,16 @@ export function HamburgerNav({
                     </button>
                   </li>
                   <li className="nav-menu-divider" role="presentation" />
+                  <li>
+                    <button
+                      type="button"
+                      className={`nav-menu-item${activeView === 'recipes' ? ' is-active' : ''}`}
+                      onClick={() => onSelect('recipes')}
+                    >
+                      Recipes
+                    </button>
+                  </li>
+                  <li className="nav-menu-divider" role="presentation" />
                   <li className="nav-menu-meta">
                     Signed in as <strong>{currentUser.username}</strong>
                   </li>

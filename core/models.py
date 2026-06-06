@@ -96,6 +96,33 @@ class Screenshot(models.Model):
         return f"Screenshot for {self.inspiration.essence}"
 
 
+class Recipe(models.Model):
+    """A cooking recipe saved from a URL."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='recipes',
+    )
+    url = models.URLField(max_length=1000, blank=True, default='')
+    title = models.CharField(max_length=512)
+    ingredients = models.TextField(blank=True, default='')
+    image_url = models.URLField(max_length=1000, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+    tags = models.CharField(max_length=255, blank=True, default='')
+    is_inspiring = models.BooleanField(default=False, db_index=True)
+    is_public = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'recipe'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
 class WordEntry(models.Model):
     """A word discovered while reading, with its chosen definition and usage context."""
 

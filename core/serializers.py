@@ -8,7 +8,7 @@ Explicit per-field declarations are only needed when you override shape or valid
 """
 from rest_framework import serializers
 
-from .models import Inspiration, Screenshot, Source, WordEntry
+from .models import Inspiration, Recipe, Screenshot, Source, WordEntry
 from .source_isbn import normalize_isbn
 
 
@@ -238,6 +238,39 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
         if not inspiring:
             attrs['is_public'] = False
 
+        return attrs
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = [
+            'id',
+            'url',
+            'title',
+            'ingredients',
+            'image_url',
+            'notes',
+            'tags',
+            'is_inspiring',
+            'is_public',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        instance = self.instance
+        inspiring = attrs.get(
+            'is_inspiring',
+            instance.is_inspiring if instance is not None else False,
+        )
+        if 'is_public' in attrs and attrs['is_public'] and not inspiring:
+            raise serializers.ValidationError({
+                'is_public': 'Mark this recipe as inspiring before making it public.',
+            })
+        if not inspiring:
+            attrs['is_public'] = False
         return attrs
 
 

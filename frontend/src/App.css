@@ -2444,3 +2444,155 @@ button.secondary:hover {
   align-self: flex-start;
   font-size: 0.85rem;
 }
+
+/* ── Recipes ─────────────────────────────────────────────────────── */
+.recipe-tab-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.recipe-tab-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.recipe-tab-btn.is-active,
+.recipe-tab-btn:hover {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+}
+
+.recipe-add-form {
+  max-width: 600px;
+}
+
+.recipe-preview-image {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.recipe-card-image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.recipe-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 0.35rem;
+}
+
+.recipe-card-source {
+  margin: 0 0 0.5rem;
+}
+
+.recipe-card-link {
+  color: rgba(255,165,0,0.9);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.recipe-card-link:hover {
+  text-decoration: underline;
+}
+
+.recipe-card-section-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.5);
+  margin: 0 0 0.35rem;
+}
+
+.recipe-ingredients-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.recipe-expand-btn {
+  background: none;
+  border: none;
+  color: rgba(255,165,0,0.9);
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.recipe-card-notes {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.75);
+  margin: 0.5rem 0 0;
+  font-style: italic;
+}
+
+.recipe-card-tags {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0.25rem 0 0;
+}
+
+.recipe-card-ingredients {
+  margin: 0.5rem 0;
+}
+
+.hint-inline {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.45);
+  font-weight: normal;
+}
+
+.home-spotlight-recipe {
+  text-align: center;
+  padding: 1rem;
+}
+
+.home-spotlight-recipe-title {
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 1rem;
+  line-height: 1.25;
+}
+
+.home-spotlight-recipe-ingredients {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.recipe-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.home-spotlight-word-image {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}

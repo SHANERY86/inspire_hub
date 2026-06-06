@@ -59,6 +59,7 @@ if URL_PATH_PREFIX and not DEBUG:
 
 GOOGLE_SEARCH_API_KEY = config('GOOGLE_SEARCH_API_KEY', default='')
 GOOGLE_SEARCH_CX = config('GOOGLE_SEARCH_CX', default='')
+PIXABAY_API_KEY = config('PIXABAY_API_KEY', default='')
 
 LOGIN_URL = 'core:home'
 LOGIN_REDIRECT_URL = reverse_lazy('core:home')

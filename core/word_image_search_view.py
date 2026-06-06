@@ -1,20 +1,97 @@
+import logging
+
 import requests
-from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-GOOGLE_SEARCH_URL = 'https://www.googleapis.com/customsearch/v1'
+logger = logging.getLogger(__name__)
+
+WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php'
+HEADERS = {'User-Agent': 'InspireHub/1.0 (shanery86@gmail.com)'}
+
+_SKIP_MIMES = {'image/x-png'}
+_SKIP_WORDS = {'icon', 'logo', 'button', 'commons-logo', 'wikimedia', 'edit', 'question_book', 'portal', 'sound', 'audio', 'flag of', 'flag_of'}
+
+
+def _is_useful_image(title, mime):
+    if mime in _SKIP_MIMES:
+        return False
+    lower = title.lower()
+    return not any(w in lower for w in _SKIP_WORDS)
+
+
+def _fetch_article_images(q):
+    """Return image dicts from the Wikipedia article whose title best matches q."""
+    try:
+        resp = requests.get(
+            WIKIPEDIA_API,
+            params={
+                'action': 'query',
+                'titles': q,
+                'generator': 'images',
+                'gimlimit': 50,
+                'prop': 'imageinfo',
+                'iiprop': 'url|mime',
+                'iiurlwidth': 500,
+                'format': 'json',
+            },
+            headers=HEADERS,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        pages = resp.json().get('query', {}).get('pages', {})
+        images = []
+        for page in pages.values():
+            info_list = page.get('imageinfo', [])
+            if not info_list:
+                continue
+            info = info_list[0]
+            url = info.get('thumburl', '') or info.get('url', '')
+            mime = info.get('mime', '')
+            title = page.get('title', '')
+            if url and _is_useful_image(title, mime):
+                images.append({'url': url, 'thumbnail': url, 'title': title.replace('File:', '')})
+        return images
+    except Exception as exc:
+        logger.warning('Article image fetch failed for %r: %s', q, exc)
+        return []
+
+
+def _fetch_search_images(q):
+    """Return thumbnail dicts from the top Wikipedia search results for q."""
+    try:
+        resp = requests.get(
+            WIKIPEDIA_API,
+            params={
+                'action': 'query',
+                'generator': 'search',
+                'gsrsearch': q,
+                'gsrlimit': 10,
+                'prop': 'pageimages',
+                'pithumbsize': 500,
+                'pilimit': 10,
+                'format': 'json',
+            },
+            headers=HEADERS,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        pages = resp.json().get('query', {}).get('pages', {})
+        images = []
+        for page in sorted(pages.values(), key=lambda p: p.get('index', 999)):
+            thumb = page.get('thumbnail', {})
+            url = thumb.get('source', '')
+            if url:
+                images.append({'url': url, 'thumbnail': url, 'title': page.get('title', '')})
+        return images
+    except Exception as exc:
+        logger.warning('Search image fetch failed for %r: %s', q, exc)
+        return []
 
 
 class WordImageSearchAPIView(APIView):
-    """
-    GET ?q=<term> — proxies Google Custom Search JSON API (image search).
-    Returns a list of { url, thumbnail, title } objects.
-    Requires GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX in settings/env.
-    """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -25,60 +102,21 @@ class WordImageSearchAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        api_key = getattr(settings, 'GOOGLE_SEARCH_API_KEY', '')
-        cx = getattr(settings, 'GOOGLE_SEARCH_CX', '')
+        article_images = _fetch_article_images(q)
+        search_images = _fetch_search_images(q)
 
-        if not api_key or not cx:
+        # Merge: article images first, then search results, deduplicating by URL
+        seen = set()
+        merged = []
+        for img in article_images + search_images:
+            if img['url'] not in seen:
+                seen.add(img['url'])
+                merged.append(img)
+
+        if not merged:
             return Response(
-                {'detail': 'Image search is not configured on this server.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                {'detail': 'No images found for that search.'},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        try:
-            resp = requests.get(
-                GOOGLE_SEARCH_URL,
-                params={
-                    'key': api_key,
-                    'cx': cx,
-                    'searchType': 'image',
-                    'q': q,
-                    'num': 10,
-                    'safe': 'active',
-                },
-                timeout=10,
-            )
-        except requests.exceptions.RequestException:
-            return Response(
-                {'detail': 'Image search service unavailable. Try again later.'},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        if resp.status_code == 429:
-            return Response(
-                {'detail': 'Image search quota exceeded for today.'},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-
-        if not resp.ok:
-            return Response(
-                {'detail': f'Image search failed ({resp.status_code}).'},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        try:
-            data = resp.json()
-        except ValueError:
-            return Response(
-                {'detail': 'Unexpected response from image search service.'},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        images = []
-        for item in data.get('items') or []:
-            images.append({
-                'url': item.get('link', ''),
-                'thumbnail': item.get('image', {}).get('thumbnailLink', ''),
-                'title': item.get('title', ''),
-            })
-
-        return Response({'images': images})
+        return Response({'images': merged})

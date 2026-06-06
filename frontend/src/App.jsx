@@ -9,6 +9,7 @@ import { MyInspirationsView } from './components/MyInspirationsView.jsx'
 import { RequestAccountView } from './components/RequestAccountView.jsx'
 import { ScreenshotCropModal } from './components/ScreenshotCropModal.jsx'
 import { SourcesGalleryView } from './components/SourcesGalleryView.jsx'
+import { RecipesView } from './components/RecipesView.jsx'
 import { TagSearchView } from './components/TagSearchView.jsx'
 import { WordLibraryView } from './components/WordLibraryView.jsx'
 import {
@@ -70,7 +71,7 @@ const emptyNewSource = {
   notes: '',
 }
 
-/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'addSource' | 'wordLibrary' | 'addWord' | 'tagSearch' | 'requestAccount'} AppView */
+/** @typedef {'home' | 'myInspirations' | 'addInspiration' | 'sourcesGallery' | 'addSource' | 'wordLibrary' | 'addWord' | 'tagSearch' | 'recipes' | 'requestAccount'} AppView */
 
 function App() {
   const [authLoading, setAuthLoading] = useState(true)
@@ -127,6 +128,10 @@ function App() {
   const [wordsError, setWordsError] = useState('')
   const [wordFormBusy, setWordFormBusy] = useState(false)
   const [wordFormMessage, setWordFormMessage] = useState('')
+
+  const [recipes, setRecipes] = useState([])
+  const [recipesLoading, setRecipesLoading] = useState(false)
+  const [recipesError, setRecipesError] = useState('')
 
   const loadInspirations = useCallback(async () => {
     try {
@@ -284,6 +289,31 @@ function App() {
     }
   }, [])
 
+  const loadRecipes = useCallback(async () => {
+    setRecipesLoading(true)
+    setRecipesError('')
+    try {
+      const all = []
+      let page = 1
+      while (page <= 200) {
+        const qs = new URLSearchParams({ page: String(page) })
+        const response = await fetch(apiUrl(`/api/v1/recipes/?${qs.toString()}`), { credentials: 'include' })
+        if (response.status === 401 || response.status === 403) { setRecipes([]); return }
+        if (!response.ok) throw new Error(`API returned ${response.status}`)
+        const data = await response.json()
+        const batch = data.results ?? []
+        all.push(...batch)
+        if (!data.next || batch.length === 0) break
+        page += 1
+      }
+      setRecipes(all)
+    } catch (err) {
+      setRecipesError(err instanceof Error ? err.message : 'Request failed')
+    } finally {
+      setRecipesLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (currentUser) {
       void loadSources()
@@ -331,14 +361,17 @@ function App() {
       } finally {
         if (!cancelled) setAuthLoading(false)
       }
-      if (!cancelled) await loadInspirations()
+      if (!cancelled) {
+        await loadInspirations()
+        void loadRecipes()
+      }
     }
 
     bootstrap()
     return () => {
       cancelled = true
     }
-  }, [loadInspirations])
+  }, [loadInspirations, loadRecipes])
 
   const submitSignupRequest = useCallback(async (payload) => {
     const csrf = await fetchSessionCsrf()
@@ -831,6 +864,64 @@ function App() {
     [loadWords],
   )
 
+  const scrapeRecipeUrl = useCallback(async (url) => {
+    const csrf = await fetchSessionCsrf()
+    const response = await fetch(apiUrl('/api/v1/recipes/scrape/'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ url }),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(typeof body.detail === 'string' ? body.detail : `Scrape failed (${response.status}).`)
+    }
+    return body
+  }, [])
+
+  const saveRecipe = useCallback(async (payload) => {
+    const csrf = await fetchSessionCsrf()
+    const response = await fetch(apiUrl('/api/v1/recipes/'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(payload),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(typeof body.detail === 'string' ? body.detail : `Could not save (${response.status}).`)
+    }
+    await loadRecipes()
+  }, [loadRecipes])
+
+  const patchRecipe = useCallback(async (id, payload) => {
+    const csrf = await fetchSessionCsrf()
+    const response = await fetch(apiUrl(`/api/v1/recipes/${id}/`), {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(payload),
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error(typeof body.detail === 'string' ? body.detail : `Update failed (${response.status}).`)
+    }
+    await loadRecipes()
+  }, [loadRecipes])
+
+  const deleteRecipe = useCallback(async (id) => {
+    const csrf = await fetchSessionCsrf()
+    const response = await fetch(apiUrl(`/api/v1/recipes/${id}/`), {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'X-CSRFToken': csrf },
+    })
+    if (response.status !== 204 && !response.ok) {
+      throw new Error(`Delete failed (${response.status}).`)
+    }
+    await loadRecipes()
+  }, [loadRecipes])
+
   async function onBarcodeIsbnPhoto(event) {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -1174,6 +1265,7 @@ function App() {
           onSignInClick={() => setShowLoginForm(true)}
           inspirations={inspirations}
           words={words}
+          recipes={recipes}
         />
       )}
 
@@ -1268,6 +1360,20 @@ function App() {
         <TagSearchView
           inspirations={inspirations}
           words={words}
+        />
+      )}
+
+      {activeView === 'recipes' && (
+        <RecipesView
+          currentUser={currentUser}
+          recipes={recipes}
+          recipesLoading={recipesLoading}
+          recipesError={recipesError}
+          onScrapeUrl={scrapeRecipeUrl}
+          onSaveRecipe={saveRecipe}
+          onPatchRecipe={patchRecipe}
+          onDeleteRecipe={deleteRecipe}
+          onSignInClick={() => setShowLoginForm(true)}
         />
       )}
 

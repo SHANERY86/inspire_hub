@@ -52,6 +52,7 @@ export function HomeView({
   onSignInClick,
   inspirations,
   words = [],
+  recipes = [],
 }) {
   const captures = useMemo(() => {
     const pool = inspirations.filter(
@@ -69,16 +70,29 @@ export function HomeView({
         part_of_speech: w.part_of_speech,
         context_sentence: w.context_sentence,
         source_title: w.source_title || '',
+        image_url: w.image_url || '',
+      }))
+
+    const inspiringRecipes = recipes
+      .filter((r) => r.is_inspiring && (!guestHome || r.is_public))
+      .map((r) => ({
+        _type: 'recipe',
+        id: `recipe-${r.id}`,
+        title: r.title,
+        ingredients: r.ingredients || '',
+        image_url: r.image_url || '',
+        url: r.url || '',
       }))
 
     const combined = [
       ...eligible.map((i) => ({ ...i, _type: 'inspiration' })),
       ...inspiringWords,
+      ...inspiringRecipes,
     ]
 
     if (guestHome && combined.length > 1) return shuffleArray(combined)
     return combined
-  }, [inspirations, words, guestHome])
+  }, [inspirations, words, recipes, guestHome])
   const captureIds = useMemo(() => captures.map((c) => c.id).join(','), [captures])
 
   const capturesRef = useRef(captures)
@@ -292,7 +306,7 @@ export function HomeView({
     )
   }
 
-  if (!inspirations.length) {
+  if (!inspirations.length && !words.length && !recipes.length) {
     return (
       <section className="view-panel home-view sheet-surface-card">
         <h2 className="home-view-title">Welcome</h2>
@@ -307,7 +321,7 @@ export function HomeView({
           </p>
         ) : (
           <p className="hint">
-            No inspirations yet. Use the menu to add one or save a source.
+            Nothing here yet. Add an inspiration, word, or recipe and mark it as inspiring to see it here.
           </p>
         )}
       </section>
@@ -319,8 +333,8 @@ export function HomeView({
       <section className="view-panel home-view sheet-surface-card">
         <p className="hint">
           {guestHome
-            ? 'No public inspirations have text or images for the spotlight yet. Add a summary, captured text, your thoughts, or a panel image when you sign in.'
-            : 'None of your saved inspirations have text or images for the spotlight yet. Add essence, captured text, your thoughts, or a panel image.'}
+            ? 'No public items in the spotlight yet.'
+            : 'Mark an inspiration, word, or recipe as inspiring to show it here.'}
         </p>
       </section>
     )
@@ -329,19 +343,20 @@ export function HomeView({
   const safeIdx = Math.min(displayIdx, captures.length - 1)
   const active = captures[safeIdx]
   const isWord = active._type === 'word'
-  const shots = isWord ? [] : (Array.isArray(active.screenshots) ? active.screenshots : [])
+  const isRecipe = active._type === 'recipe'
+  const shots = (isWord || isRecipe) ? [] : (Array.isArray(active.screenshots) ? active.screenshots : [])
   const showScreenshots = shots.length > 0
-  const captured = isWord ? '' : inspirationSpotlightPrimaryText(active)
+  const captured = (isWord || isRecipe) ? '' : inspirationSpotlightPrimaryText(active)
   const fontStack = SPOTLIGHT_FONTS[fontIdx % SPOTLIGHT_FONTS.length].stack
 
-  const contributor = guestHome && !isWord ? (active.added_by_username || '').trim() : ''
-  const srcTitle = isWord ? '' : (active.source_display_title ?? '').trim()
-  const workTitle = isWord
+  const contributor = (guestHome && !isWord && !isRecipe) ? (active.added_by_username || '').trim() : ''
+  const srcTitle = (isWord || isRecipe) ? '' : (active.source_display_title ?? '').trim()
+  const workTitle = (isWord || isRecipe)
     ? (active.source_title || '').trim()
     : (srcTitle || (active.source_title || '').trim()).trim()
-  const srcAuthor = isWord ? '' : (active.source_display_author ?? '').trim()
+  const srcAuthor = (isWord || isRecipe) ? '' : (active.source_display_author ?? '').trim()
 
-  const showAttribution = isWord
+  const showAttribution = (isWord || isRecipe)
     ? Boolean(workTitle)
     : guestHome
       ? Boolean(contributor || workTitle || srcAuthor)
@@ -358,7 +373,33 @@ export function HomeView({
 
   const spotlightBody = (
     <div className="home-spotlight-capture-wrap" style={fadeStyle}>
-      {isWord ? (
+      {isWord && active.image_url ? (
+        <div className="home-spotlight-word">
+          <img src={active.image_url} alt={active.word} className="home-spotlight-word-image" />
+          <p className="home-spotlight-word-term" style={{ fontFamily: fontStack }}>
+            {active.word}
+          </p>
+          {active.part_of_speech && (
+            <p className="home-spotlight-word-pos">{active.part_of_speech}</p>
+          )}
+          <blockquote className="home-spotlight-word-context">
+            <p>{active.definition}</p>
+          </blockquote>
+        </div>
+      ) : isRecipe ? (
+        <div className="home-spotlight-recipe">
+          <p className="home-spotlight-recipe-title" style={{ fontFamily: fontStack }}>
+            {active.title}
+          </p>
+          {active.ingredients && (
+            <ul className="home-spotlight-recipe-ingredients">
+              {active.ingredients.split('\n').filter(Boolean).slice(0, 4).map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : isWord ? (
         <div className="home-spotlight-word">
           <p className="home-spotlight-word-term" style={{ fontFamily: fontStack }}>
             {active.word}

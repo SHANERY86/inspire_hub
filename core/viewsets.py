@@ -3,9 +3,10 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 
 from .filters import InspirationFilter, ScreenshotFilter
-from .models import Inspiration, Screenshot, Source, WordEntry
+from .models import Inspiration, Recipe, Screenshot, Source, WordEntry
 from .serializers import (
     InspirationSerializer,
+    RecipeSerializer,
     ScreenshotSerializer,
     SourceSerializer,
     WordEntrySerializer,
@@ -63,6 +64,19 @@ class WordEntryViewSet(viewsets.ModelViewSet):
         if self.request.user.is_authenticated:
             return qs.filter(user=self.request.user)
         return qs.filter(is_public=True, is_inspiring=True)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class RecipeViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    serializer_class = RecipeSerializer
+
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return Recipe.objects.filter(user=self.request.user)
+        return Recipe.objects.filter(is_public=True, is_inspiring=True)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
