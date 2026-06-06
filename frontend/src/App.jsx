@@ -77,6 +77,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState(null)
   const [showLoginForm, setShowLoginForm] = useState(false)
+  const [introExpanded, setIntroExpanded] = useState(false)
   const [loginUsername, setLoginUsername] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
@@ -1199,33 +1200,6 @@ function App() {
         />
       </div>
 
-      {!authLoading && !currentUser && activeView !== 'requestAccount' ? (
-        <div className="app-guest-intro">
-          <p>
-            Save inspiring things you read by snapshotting a page and use AI Driven OCR to convert
-            the image to text. Save words you want to keep in your mind and associate images to them.
-            Extract recipe ingredients from a recipe page instantly.
-          </p>
-          <p>
-            Keep a log of special things that inspire you or build a base for your own creative
-            endeavours. 
-          </p>
-          <p>
-            An inspiring turn of phrase.. a beautiful comic panel.. That recipe you always have to find again.. These things will no longer disappear into the ether,
-            they are memorialized here.
-          </p>
-          <p>
-            If you would like to request a login{' '}
-            <button
-              type="button"
-              className="app-guest-intro-link"
-              onClick={() => setActiveView('requestAccount')}
-            >
-              click here!
-            </button>
-          </p>
-        </div>
-      ) : null}
 
       {!authLoading && !currentUser && showLoginForm && (
         <section className="login-card sheet-surface-card">
@@ -1288,6 +1262,46 @@ function App() {
           words={words}
           recipes={recipes}
         />
+      )}
+
+      {!authLoading && !currentUser && activeView === 'home' && (
+        <div className="app-guest-intro">
+          <button
+            type="button"
+            className="app-guest-intro-toggle"
+            onClick={() => setIntroExpanded((v) => !v)}
+            aria-expanded={introExpanded}
+          >
+            {introExpanded ? 'Hide description ▲' : 'About this app ▼'}
+          </button>
+          {introExpanded && (
+            <div className="app-guest-intro-body">
+              <p>
+                Save inspiring things you read by snapshotting a page and use AI Driven OCR to convert
+                the image to text. Save words you want to keep in your mind and associate images to them.
+                Extract recipe ingredients from a recipe page instantly.
+              </p>
+              <p>
+                Keep a log of special things that inspire you or build a base for your own creative
+                endeavours.
+              </p>
+              <p>
+                An inspiring turn of phrase.. a beautiful comic panel.. That recipe you always have to find again.. These things will no longer disappear into the ether,
+                they are memorialized here.
+              </p>
+              <p>
+                If you would like to request a login{' '}
+                <button
+                  type="button"
+                  className="app-guest-intro-link"
+                  onClick={() => setActiveView('requestAccount')}
+                >
+                  click here!
+                </button>
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       {activeView === 'requestAccount' && !currentUser && (

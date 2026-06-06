@@ -71,6 +71,7 @@ export function HomeView({
         context_sentence: w.context_sentence,
         source_title: w.source_title || '',
         image_url: w.image_url || '',
+        added_by_username: w.added_by_username || '',
       }))
 
     const inspiringRecipes = recipes
@@ -82,6 +83,7 @@ export function HomeView({
         ingredients: r.ingredients || '',
         image_url: r.image_url || '',
         url: r.url || '',
+        added_by_username: r.added_by_username || '',
       }))
 
     const combined = [
@@ -381,7 +383,9 @@ export function HomeView({
   const captured = (isWord || isRecipe) ? '' : inspirationSpotlightPrimaryText(active)
   const fontStack = SPOTLIGHT_FONTS[fontIdx % SPOTLIGHT_FONTS.length].stack
 
-  const contributor = (guestHome && !isWord && !isRecipe) ? (active.added_by_username || '').trim() : ''
+  const contributor = (isWord || isRecipe)
+    ? (active.added_by_username || '').trim()
+    : guestHome ? (active.added_by_username || '').trim() : ''
   const srcTitle = (isWord || isRecipe) ? '' : (active.source_display_title ?? '').trim()
   const workTitle = (isWord || isRecipe)
     ? (active.source_title || '').trim()
@@ -389,7 +393,7 @@ export function HomeView({
   const srcAuthor = (isWord || isRecipe) ? '' : (active.source_display_author ?? '').trim()
 
   const showAttribution = (isWord || isRecipe)
-    ? Boolean(workTitle)
+    ? Boolean(contributor || workTitle)
     : guestHome
       ? Boolean(contributor || workTitle || srcAuthor)
       : Boolean(workTitle || srcAuthor)
@@ -474,7 +478,7 @@ export function HomeView({
       )}
       {showAttribution && (
         <p className="home-spotlight-attribution" lang="en">
-          {guestHome && contributor ? (
+          {contributor ? (
             <>
               <span className="home-spotlight-attribution-by">{contributor}</span>
               {(workTitle || srcAuthor) ? (
