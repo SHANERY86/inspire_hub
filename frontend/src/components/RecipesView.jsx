@@ -19,6 +19,7 @@ export function RecipesView({
   const [publicItems, setPublicItems] = useState([])
   const [publicLoading, setPublicLoading] = useState(false)
   const [publicError, setPublicError] = useState('')
+  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
   useEffect(() => {
@@ -35,7 +36,18 @@ export function RecipesView({
       .finally(() => setPublicLoading(false))
   }, [publicOnly, onFetchPublicRecipes])
 
-  const displayRecipes = publicOnly ? publicItems : recipes
+  const baseRecipes = publicOnly ? publicItems : recipes
+
+  const displayRecipes = useMemo(() => {
+    if (!search.trim()) return baseRecipes
+    const q = search.trim().toLowerCase()
+    return baseRecipes.filter((r) =>
+      r.title.toLowerCase().includes(q) ||
+      (r.tags || '').toLowerCase().includes(q) ||
+      (r.notes || '').toLowerCase().includes(q) ||
+      (r.ingredients || '').toLowerCase().includes(q),
+    )
+  }, [baseRecipes, search])
 
   const totalPages = Math.max(1, Math.ceil(displayRecipes.length / PAGE_SIZE))
   const safePage = Math.min(Math.max(1, page), totalPages)
@@ -47,7 +59,7 @@ export function RecipesView({
   const rangeStart = displayRecipes.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
   const rangeEnd = Math.min(safePage * PAGE_SIZE, displayRecipes.length)
 
-  useEffect(() => { setPage(1) }, [publicOnly])
+  useEffect(() => { setPage(1) }, [publicOnly, search])
 
   const skipScrollRef = useRef(true)
   useEffect(() => {
@@ -102,26 +114,41 @@ export function RecipesView({
 
       {tab === 'list' && (
         <>
-          <label className="checkbox-row" style={{ marginBottom: '0.75rem' }}>
-            <input
-              type="checkbox"
-              checked={publicOnly}
-              onChange={(e) => setPublicOnly(e.target.checked)}
-            />
-            Public
-          </label>
+          <div className="my-inspirations-search-row">
+            <label className="my-inspirations-search">
+              <input
+                className="my-inspirations-search-input"
+                type="search"
+                placeholder="Search title, ingredients, tags…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </label>
+          </div>
+          <div className="my-inspirations-filters">
+            <label className="checkbox-row my-inspirations-sort">
+              <input
+                type="checkbox"
+                checked={publicOnly}
+                onChange={(e) => setPublicOnly(e.target.checked)}
+              />
+              Public
+            </label>
+          </div>
           {(recipesLoading || publicLoading) && <p className="hint">Loading…</p>}
           {recipesError && <p className="error">{recipesError}</p>}
           {publicError && <p className="error">{publicError}</p>}
           {!recipesLoading && !publicLoading && displayRecipes.length === 0 && (
             <p className="hint" style={{ textAlign: 'center' }}>
-              {publicOnly ? 'No public recipes found.' : (
-                <>No recipes yet.{' '}
-                  <button type="button" className="app-guest-intro-link" onClick={() => setTab('add')}>
-                    Add your first one
-                  </button>.
-                </>
-              )}
+              {search.trim()
+                ? 'No recipes match your search.'
+                : publicOnly
+                  ? 'No public recipes found.'
+                  : <>No recipes yet.{' '}
+                      <button type="button" className="app-guest-intro-link" onClick={() => setTab('add')}>
+                        Add your first one
+                      </button>.
+                    </>}
             </p>
           )}
           {displayRecipes.length > 0 && (
