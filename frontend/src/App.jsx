@@ -1203,14 +1203,15 @@ function App() {
         <div className="app-guest-intro">
           <p>
             Save inspiring things you read by snapshotting a page and use AI Driven OCR to convert
-            the image to text
+            the image to text. Save words you want to keep in your mind and associate images to them.
+            Extract recipe ingredients from a recipe page instantly.
           </p>
           <p>
             Keep a log of special things that inspire you or build a base for your own creative
             endeavours. 
           </p>
           <p>
-            An inspiring turn of phrase.. a beautiful comic panel.. These things will no longer disappear into the ether,
+            An inspiring turn of phrase.. a beautiful comic panel.. That recipe you always have to find again.. These things will no longer disappear into the ether,
             they are memorialized here.
           </p>
           <p>
