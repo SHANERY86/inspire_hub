@@ -116,7 +116,7 @@
   <p class="err" id="error" hidden></p>
 
   <footer>
-    Data from <a id="netdata-link" href="#">Netdata</a> · refreshes every 5s
+    Data from <a id="netdata-link" href="#">Netdata</a> · refreshes every 5s · last updated <span id="last-updated">—</span>
   </footer>
 
   <script>
@@ -131,8 +131,8 @@
     document.getElementById('host-line').textContent = NETDATA;
 
     async function fetchChart(chart) {
-      const url = `${NETDATA}/api/v1/data?chart=${encodeURIComponent(chart)}&format=json&points=1&group=average&gtime=0`;
-      const res = await fetch(url);
+      const url = `${NETDATA}/api/v1/data?chart=${encodeURIComponent(chart)}&format=json&points=1&group=average&gtime=0&after=-300&_=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error(`${chart}: HTTP ${res.status}`);
       return res.json();
     }
@@ -227,12 +227,13 @@
           `${fmtMb(ramUsed)} used · ${fmtMb(ramFree)} free · ${fmtMb(ramTotal)} total`;
         document.getElementById('ram-bar').style.width = `${ramPct}%`;
 
-        const diskPct = pct(diskUsed, diskTotal);
+        const diskPct = pct(diskUsed, diskUsed + diskAvail);
         document.getElementById('disk-val').textContent = `${diskPct.toFixed(0)}%`;
         document.getElementById('disk-detail').textContent =
           `${fmtGb(diskAvail)} free · ${fmtGb(diskUsed)} used · ${fmtGb(diskTotal)} on /`;
         document.getElementById('disk-bar').style.width = `${diskPct}%`;
 
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
         errEl.hidden = true;
         cards.hidden = false;
       } catch (e) {
@@ -244,6 +245,10 @@
 
     refresh();
     setInterval(refresh, 5000);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refresh();
+    });
   </script>
 </body>
 </html>
