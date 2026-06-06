@@ -420,6 +420,9 @@ export function HomeView({
         </div>
       ) : isRecipe ? (
         <div className="home-spotlight-recipe">
+          {active.image_url && (
+            <img src={active.image_url} alt={active.title} className="home-spotlight-word-image" />
+          )}
           <p className="home-spotlight-recipe-title" style={{ fontFamily: fontStack }}>
             {active.title}
           </p>

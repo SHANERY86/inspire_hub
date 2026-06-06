@@ -493,6 +493,7 @@ function WordCard({ word: w, sources, onPatch, onDelete, readOnly = false, onSea
       )}
       <p className="my-inspirations-meta">
         Added {new Date(w.created_at).toLocaleDateString()}
+        {w.added_by_username ? ` · ${w.added_by_username}` : ''}
       </p>
       {!readOnly && (
         <div className="my-inspirations-row-actions">

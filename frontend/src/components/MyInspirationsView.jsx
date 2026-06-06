@@ -752,6 +752,7 @@ export function MyInspirationsView({
                 <p className="my-inspirations-meta">
                   {formatInspirationDate(i.date)}
                   {i.source_type ? ` · ${i.source_type}` : ''}
+                  {i.added_by_username ? ` · ${i.added_by_username}` : ''}
                 </p>
               </li>
             )

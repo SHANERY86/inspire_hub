@@ -615,6 +615,7 @@ function RecipeCard({ recipe: r, onPatch, onDelete, readOnly = false }) {
       )}
       <p className="my-inspirations-meta">
         Saved {new Date(r.created_at).toLocaleDateString()}
+        {r.added_by_username ? ` · ${r.added_by_username}` : ''}
       </p>
 
       {!readOnly && (

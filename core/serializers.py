@@ -141,11 +141,11 @@ class InspirationSerializer(serializers.ModelSerializer):
         return (src.author or '').strip()
 
     def get_added_by_username(self, obj):
-        request = self.context.get('request')
-        if not request or request.user.is_authenticated:
-            return ''
         owner = getattr(obj, 'user', None)
         if owner is None:
+            return ''
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.id == owner.id:
             return ''
         return (getattr(owner, 'username', None) or '').strip()
 
@@ -242,6 +242,8 @@ class InspirationDraftCommitSerializer(serializers.Serializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
+    added_by_username = serializers.SerializerMethodField()
+
     class Meta:
         model = Recipe
         fields = [
@@ -255,10 +257,20 @@ class RecipeSerializer(serializers.ModelSerializer):
             'tags',
             'is_inspiring',
             'is_public',
+            'added_by_username',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'added_by_username', 'created_at', 'updated_at']
+
+    def get_added_by_username(self, obj):
+        owner = getattr(obj, 'user', None)
+        if owner is None:
+            return ''
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.id == owner.id:
+            return ''
+        return (getattr(owner, 'username', None) or '').strip()
 
     def validate(self, attrs):
         instance = self.instance
@@ -282,6 +294,7 @@ class WordEntrySerializer(serializers.ModelSerializer):
         queryset=Source.objects.none(),
     )
     source_title = serializers.SerializerMethodField()
+    added_by_username = serializers.SerializerMethodField()
 
     class Meta:
         model = WordEntry
@@ -297,10 +310,11 @@ class WordEntrySerializer(serializers.ModelSerializer):
             'tags',
             'is_inspiring',
             'is_public',
+            'added_by_username',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'source_title']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'source_title', 'added_by_username']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -315,3 +329,12 @@ class WordEntrySerializer(serializers.ModelSerializer):
         if src is None:
             return ''
         return (src.title or '').strip()
+
+    def get_added_by_username(self, obj):
+        owner = getattr(obj, 'user', None)
+        if owner is None:
+            return ''
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.id == owner.id:
+            return ''
+        return (getattr(owner, 'username', None) or '').strip()
