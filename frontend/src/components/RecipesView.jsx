@@ -206,6 +206,7 @@ function AddRecipeForm({ onScrapeUrl, onSave }) {
 
   const [title, setTitle] = useState('')
   const [ingredients, setIngredients] = useState('')
+  const [instructions, setInstructions] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [tags, setTags] = useState('')
@@ -225,6 +226,7 @@ function AddRecipeForm({ onScrapeUrl, onSave }) {
       setPreview(data)
       setTitle(data.title || '')
       setIngredients((data.ingredients || []).join('\n'))
+      setInstructions((data.instructions || []).join('\n'))
       setImageUrl(data.image_url || '')
       setIsInspiring(false)
       setIsPublic(false)
@@ -241,6 +243,7 @@ function AddRecipeForm({ onScrapeUrl, onSave }) {
     setPreview({ manual: true })
     setTitle('')
     setIngredients('')
+    setInstructions('')
     setImageUrl('')
     setSaveError('')
   }
@@ -258,6 +261,7 @@ function AddRecipeForm({ onScrapeUrl, onSave }) {
         url: url.trim(),
         title: title.trim(),
         ingredients: ingredients.trim(),
+        instructions: instructions.trim(),
         image_url: imageUrl.trim(),
         notes: notes.trim(),
         tags: tags.trim(),
@@ -268,6 +272,7 @@ function AddRecipeForm({ onScrapeUrl, onSave }) {
       setPreview(null)
       setTitle('')
       setIngredients('')
+      setInstructions('')
       setImageUrl('')
       setNotes('')
       setTags('')
@@ -326,6 +331,15 @@ function AddRecipeForm({ onScrapeUrl, onSave }) {
             <textarea
               value={ingredients}
               onChange={(e) => setIngredients(e.target.value)}
+              rows={8}
+            />
+          </label>
+
+          <label>
+            Instructions <span className="hint-inline">(one step per line)</span>
+            <textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
               rows={10}
             />
           </label>
@@ -395,13 +409,16 @@ function RecipeCard({ recipe: r, onPatch, onDelete, readOnly = false }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [instructionsExpanded, setInstructionsExpanded] = useState(false)
 
   const ingredientLines = (r.ingredients || '').split('\n').filter(Boolean)
+  const instructionLines = (r.instructions || '').split('\n').filter(Boolean)
 
   function openEdit() {
     setEditForm({
       title: r.title,
       ingredients: r.ingredients,
+      instructions: r.instructions || '',
       image_url: r.image_url || '',
       notes: r.notes || '',
       tags: r.tags || '',
@@ -420,6 +437,7 @@ function RecipeCard({ recipe: r, onPatch, onDelete, readOnly = false }) {
       await onPatch(r.id, {
         title: editForm.title,
         ingredients: editForm.ingredients,
+        instructions: editForm.instructions,
         image_url: editForm.image_url,
         notes: editForm.notes,
         tags: editForm.tags,
@@ -462,6 +480,14 @@ function RecipeCard({ recipe: r, onPatch, onDelete, readOnly = false }) {
             <textarea
               value={editForm.ingredients}
               onChange={(e) => setEditForm((f) => ({ ...f, ingredients: e.target.value }))}
+              rows={8}
+            />
+          </label>
+          <label>
+            Instructions <span className="hint-inline">(one step per line)</span>
+            <textarea
+              value={editForm.instructions}
+              onChange={(e) => setEditForm((f) => ({ ...f, instructions: e.target.value }))}
               rows={10}
             />
           </label>
@@ -558,6 +584,25 @@ function RecipeCard({ recipe: r, onPatch, onDelete, readOnly = false }) {
             >
               {expanded ? 'Show less' : `Show all ${ingredientLines.length} ingredients`}
             </button>
+          )}
+        </div>
+      )}
+
+      {instructionLines.length > 0 && (
+        <div className="recipe-card-ingredients">
+          <button
+            type="button"
+            className="recipe-expand-btn"
+            onClick={() => setInstructionsExpanded((v) => !v)}
+          >
+            {instructionsExpanded ? 'Hide instructions' : `Show instructions (${instructionLines.length} steps)`}
+          </button>
+          {instructionsExpanded && (
+            <ol className="recipe-instructions-list">
+              {instructionLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ol>
           )}
         </div>
       )}

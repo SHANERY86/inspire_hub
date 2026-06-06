@@ -107,6 +107,7 @@ class Recipe(models.Model):
     url = models.URLField(max_length=1000, blank=True, default='')
     title = models.CharField(max_length=512)
     ingredients = models.TextField(blank=True, default='')
+    instructions = models.TextField(blank=True, default='')
     image_url = models.URLField(max_length=1000, blank=True, default='')
     notes = models.TextField(blank=True, default='')
     tags = models.CharField(max_length=255, blank=True, default='')

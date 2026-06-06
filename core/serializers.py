@@ -249,6 +249,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             'url',
             'title',
             'ingredients',
+            'instructions',
             'image_url',
             'notes',
             'tags',

@@ -57,6 +57,10 @@ class RecipeScrapeAPIView(APIView):
         title = safe(scraper.title) or ''
         ingredients = safe(scraper.ingredients) or []
         image_url = safe(scraper.image) or ''
+        instructions_list = safe(scraper.instructions_list) or []
+        if not instructions_list:
+            raw = safe(scraper.instructions) or ''
+            instructions_list = [s.strip() for s in raw.split('\n') if s.strip()] if raw else []
 
         if not title and not ingredients:
             return Response(
@@ -67,5 +71,6 @@ class RecipeScrapeAPIView(APIView):
         return Response({
             'title': title,
             'ingredients': ingredients,
+            'instructions': instructions_list,
             'image_url': image_url,
         })
