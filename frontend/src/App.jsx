@@ -1411,6 +1411,7 @@ function App() {
           onDeleteWord={deleteWord}
           onSignInClick={() => setShowLoginForm(true)}
           onFetchPublicWords={fetchPublicWords}
+          onSearchImages={searchWordImages}
         />
       )}
 
