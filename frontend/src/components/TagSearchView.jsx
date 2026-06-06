@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { resolveMediaUrl } from '../lib/mediaUrl.js'
 
 function matchesTags(itemTags, query) {
   if (!query.trim()) return false
@@ -59,20 +60,32 @@ export function TagSearchView({ inspirations, words }) {
             Inspirations <span className="tag-search-count">({matchedInspirations.length})</span>
           </h3>
           <ul className="tag-search-list">
-            {matchedInspirations.map((i) => (
-              <li key={i.id} className="tag-search-item">
-                <p className="tag-search-item-primary">
-                  {(i.essence || i.quote || '—').trim()}
-                </p>
-                {i.source_title && (
-                  <p className="tag-search-item-meta">{i.source_title}</p>
-                )}
-                {i.user_thoughts && (
-                  <p className="tag-search-item-meta">{i.user_thoughts}</p>
-                )}
-                <p className="tag-search-item-tags">{i.tags}</p>
-              </li>
-            ))}
+            {matchedInspirations.map((i) => {
+              const shots = Array.isArray(i.screenshots) ? i.screenshots : []
+              const firstShot = shots[0] ? resolveMediaUrl(shots[0].image) : null
+              return (
+                <li key={i.id} className="tag-search-item">
+                  {firstShot && (
+                    <img
+                      src={firstShot}
+                      alt=""
+                      className="tag-search-item-screenshot"
+                      loading="lazy"
+                    />
+                  )}
+                  <p className="tag-search-item-primary">
+                    {(i.essence || i.quote || '—').trim()}
+                  </p>
+                  {i.source_title && (
+                    <p className="tag-search-item-meta">{i.source_title}</p>
+                  )}
+                  {i.user_thoughts && (
+                    <p className="tag-search-item-meta">{i.user_thoughts}</p>
+                  )}
+                  <p className="tag-search-item-tags">{i.tags}</p>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
