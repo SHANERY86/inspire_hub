@@ -119,6 +119,11 @@ class WordEntry(models.Model):
         on_delete=models.SET_NULL,
         related_name='word_entries',
     )
+    image_url = models.URLField(
+        blank=True,
+        default='',
+        help_text='Optional image URL attached to this word.',
+    )
     tags = models.CharField(
         max_length=255,
         blank=True,

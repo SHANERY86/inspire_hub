@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .dictionary_lookup_view import DictionaryLookupAPIView
+from .word_image_search_view import WordImageSearchAPIView
 from .inspiration_api import (
     InspirationDraftCommitAPIView,
     InspirationDraftPreviewAPIView,
@@ -37,6 +38,11 @@ urlpatterns = [
         'words/dictionary-lookup/',
         DictionaryLookupAPIView.as_view(),
         name='dictionary-lookup',
+    ),
+    path(
+        'words/image-search/',
+        WordImageSearchAPIView.as_view(),
+        name='word-image-search',
     ),
     path(
         'inspiration-drafts/preview/',

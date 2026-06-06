@@ -2310,3 +2310,137 @@ button.secondary:hover {
   font-size: 0.8rem;
   color: var(--accent);
 }
+
+/* Word image */
+.word-card-image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+
+/* Mode toggle (lookup / manual) */
+.word-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.word-mode-btn {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.word-mode-btn.is-active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.word-mode-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+/* Image search */
+.word-image-search-block {
+  margin: 0.5rem 0;
+}
+
+.word-image-search-toggle {
+  width: 100%;
+}
+
+.word-image-search-panel {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.word-image-search-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.word-image-search-input {
+  flex: 1;
+  padding: 0.45rem 0.65rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.42);
+  border-radius: 6px;
+  background: rgba(255, 122, 26, 0.52);
+  color: #ffffff;
+  font-size: 0.95rem;
+}
+
+.word-image-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.word-image-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.word-image-grid-item {
+  border-radius: 5px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.word-image-grid-item.is-selected {
+  border-color: #ffffff;
+}
+
+.word-image-thumb-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.word-image-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+}
+
+.word-image-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.word-image-preview {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.word-image-clear {
+  align-self: flex-start;
+  font-size: 0.85rem;
+}

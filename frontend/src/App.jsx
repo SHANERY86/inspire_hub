@@ -705,6 +705,23 @@ function App() {
     }
   }
 
+  const searchWordImages = useCallback(async (q) => {
+    const params = new URLSearchParams({ q })
+    const response = await fetch(
+      apiUrl(`/api/v1/words/image-search/?${params.toString()}`),
+      { credentials: 'include' },
+    )
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(
+        typeof body.detail === 'string'
+          ? body.detail
+          : `Image search failed (${response.status}).`,
+      )
+    }
+    return body.images ?? []
+  }, [])
+
   const lookupWord = useCallback(async (word) => {
     const params = new URLSearchParams({ word })
     const response = await fetch(
@@ -1272,6 +1289,7 @@ function App() {
           currentUser={currentUser}
           sources={sources}
           onLookupWord={lookupWord}
+          onSearchImages={searchWordImages}
           onSaveWord={saveWord}
           wordFormBusy={wordFormBusy}
           wordFormMessage={wordFormMessage}

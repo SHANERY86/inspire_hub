@@ -259,6 +259,7 @@ class WordEntrySerializer(serializers.ModelSerializer):
             'context_sentence',
             'source',
             'source_title',
+            'image_url',
             'tags',
             'is_inspiring',
             'is_public',

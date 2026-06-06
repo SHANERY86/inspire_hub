@@ -57,6 +57,9 @@ if URL_PATH_PREFIX and not DEBUG:
     SESSION_COOKIE_PATH = _cookie_path
     CSRF_COOKIE_PATH = _cookie_path
 
+GOOGLE_SEARCH_API_KEY = config('GOOGLE_SEARCH_API_KEY', default='')
+GOOGLE_SEARCH_CX = config('GOOGLE_SEARCH_CX', default='')
+
 LOGIN_URL = 'core:home'
 LOGIN_REDIRECT_URL = reverse_lazy('core:home')
 LOGOUT_REDIRECT_URL = reverse_lazy('core:home')

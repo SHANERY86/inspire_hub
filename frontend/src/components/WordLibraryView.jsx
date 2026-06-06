@@ -197,6 +197,7 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
       definition: w.definition,
       context_sentence: w.context_sentence,
       source: w.source ?? '',
+      image_url: w.image_url ?? '',
       tags: w.tags ?? '',
       is_inspiring: w.is_inspiring,
       is_public: w.is_public,
@@ -220,6 +221,7 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
         definition: editForm.definition,
         context_sentence: editForm.context_sentence,
         source: editForm.source === '' ? null : Number(editForm.source),
+        image_url: editForm.image_url,
         tags: editForm.tags,
         is_inspiring: editForm.is_inspiring,
         is_public: editForm.is_public,
@@ -282,6 +284,18 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
           </label>
 
           <label>
+            Image URL (optional)
+            <input
+              value={editForm.image_url}
+              onChange={(e) => setEditForm((f) => ({ ...f, image_url: e.target.value }))}
+              placeholder="https://…"
+            />
+          </label>
+          {editForm.image_url && (
+            <img src={editForm.image_url} alt="preview" className="word-card-image" loading="lazy" />
+          )}
+
+          <label>
             Source
             <select
               value={editForm.source === null ? '' : String(editForm.source)}
@@ -331,6 +345,9 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
 
   return (
     <li className="my-inspirations-list-item word-card">
+      {w.image_url && (
+        <img src={w.image_url} alt={w.word} className="word-card-image" loading="lazy" />
+      )}
       <div className="word-card-header">
         <h3 className="word-card-word">{w.word}</h3>
         {w.part_of_speech && (
