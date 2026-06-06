@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { resolveMediaUrl } from '../lib/mediaUrl.js'
 
+function flowQuoteText(text) {
+  return text.replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ').trim()
+}
+
 function matchesTags(itemTags, query) {
   if (!query.trim()) return false
   const stored = (itemTags || '')
@@ -61,6 +65,10 @@ export function TagSearchView({ inspirations, words }) {
           </h3>
           <ul className="tag-search-list">
             {matchedInspirations.map((i) => {
+              const quote = (i.quote || '').trim()
+              const essence = (i.essence || '').trim()
+              const essenceDisplay = essence || (quote && !essence ? quote : '') || '—'
+              const showQuoteBlock = Boolean(essence) && Boolean(quote) && quote !== essence
               const shots = Array.isArray(i.screenshots) ? i.screenshots : []
               const firstShot = shots[0] ? resolveMediaUrl(shots[0].image) : null
               return (
@@ -73,9 +81,12 @@ export function TagSearchView({ inspirations, words }) {
                       loading="lazy"
                     />
                   )}
-                  <p className="tag-search-item-primary">
-                    {(i.essence || i.quote || '—').trim()}
-                  </p>
+                  <p className="tag-search-item-primary">{essenceDisplay}</p>
+                  {showQuoteBlock && (
+                    <blockquote className="my-inspirations-item-quote">
+                      <p>{flowQuoteText(quote)}</p>
+                    </blockquote>
+                  )}
                   {i.source_title && (
                     <p className="tag-search-item-meta">{i.source_title}</p>
                   )}
