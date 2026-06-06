@@ -353,7 +353,7 @@ class TestInspirationCRUD:
     def test_create_missing_required_field_returns_400(self, authenticated_api_client):
         r = authenticated_api_client.post(
             '/api/v1/inspirations/',
-            {'source_title': 'Only title', 'source_type': 'book'},
+            {'source_title': 'Only title'},
             format='json',
         )
         assert r.status_code == status.HTTP_400_BAD_REQUEST
