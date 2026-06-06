@@ -12,6 +12,7 @@ export function WordLibraryView({
   onDeleteWord,
   onSignInClick,
   onFetchPublicWords,
+  onSearchImages,
 }) {
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('')
@@ -185,7 +186,7 @@ export function WordLibraryView({
         <>
           <ul className="my-inspirations-list">
             {pagedRows.map((w) => (
-              <WordCard key={w.id} word={w} sources={sources} onPatch={onPatchWord} onDelete={onDeleteWord} readOnly={publicOnly} />
+              <WordCard key={w.id} word={w} sources={sources} onPatch={onPatchWord} onDelete={onDeleteWord} readOnly={publicOnly} onSearchImages={onSearchImages} />
             ))}
           </ul>
           <nav className="my-inspirations-pagination" aria-label="Word library pages">
@@ -218,13 +219,35 @@ export function WordLibraryView({
   )
 }
 
-function WordCard({ word: w, sources, onPatch, onDelete, readOnly = false }) {
+function WordCard({ word: w, sources, onPatch, onDelete, readOnly = false, onSearchImages }) {
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState(null)
   const [busy, setBusy] = useState(false)
   const [editError, setEditError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [imageQuery, setImageQuery] = useState('')
+  const [imageResults, setImageResults] = useState([])
+  const [imageSearchBusy, setImageSearchBusy] = useState(false)
+  const [imageSearchError, setImageSearchError] = useState('')
+  const [imageSearchOpen, setImageSearchOpen] = useState(false)
+
+  async function handleImageSearch(e) {
+    e.preventDefault()
+    if (!imageQuery.trim()) return
+    setImageSearchBusy(true)
+    setImageSearchError('')
+    setImageResults([])
+    try {
+      const results = await onSearchImages(imageQuery.trim())
+      setImageResults(results)
+      if (results.length === 0) setImageSearchError('No images found.')
+    } catch (err) {
+      setImageSearchError(err?.message || 'Image search failed.')
+    } finally {
+      setImageSearchBusy(false)
+    }
+  }
 
   function openEdit() {
     setEditForm({
@@ -236,6 +259,10 @@ function WordCard({ word: w, sources, onPatch, onDelete, readOnly = false }) {
       is_inspiring: w.is_inspiring,
       is_public: w.is_public,
     })
+    setImageQuery(w.word)
+    setImageResults([])
+    setImageSearchError('')
+    setImageSearchOpen(false)
     setEditError('')
     setEditing(true)
   }
@@ -317,17 +344,78 @@ function WordCard({ word: w, sources, onPatch, onDelete, readOnly = false }) {
             />
           </label>
 
-          <label>
-            Image URL (optional)
-            <input
-              value={editForm.image_url}
-              onChange={(e) => setEditForm((f) => ({ ...f, image_url: e.target.value }))}
-              placeholder="https://…"
-            />
-          </label>
-          {editForm.image_url && (
-            <img src={editForm.image_url} alt="preview" className="word-card-image" loading="lazy" />
-          )}
+          <div className="word-image-search-block">
+            <button
+              type="button"
+              className="word-image-search-toggle secondary"
+              onClick={() => setImageSearchOpen((o) => !o)}
+            >
+              {imageSearchOpen ? 'Hide image search' : 'Search for an image'}
+            </button>
+
+            {imageSearchOpen && (
+              <div className="word-image-search-panel">
+                <div className="word-image-search-row">
+                  <input
+                    className="word-image-search-input"
+                    value={imageQuery}
+                    onChange={(e) => setImageQuery(e.target.value)}
+                    placeholder="Search term…"
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleImageSearch(e) } }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImageSearch}
+                    disabled={imageSearchBusy || !imageQuery.trim()}
+                  >
+                    {imageSearchBusy ? 'Searching…' : 'Search'}
+                  </button>
+                </div>
+                {imageSearchError && <p className="error">{imageSearchError}</p>}
+                {editForm.image_url && (
+                  <div className="word-image-selected">
+                    <img src={editForm.image_url} alt="Selected" className="word-image-preview" />
+                    <button
+                      type="button"
+                      className="secondary word-image-clear"
+                      onClick={() => setEditForm((f) => ({ ...f, image_url: '' }))}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+                {imageResults.length > 0 && (
+                  <ul className="word-image-grid">
+                    {imageResults.map((img, i) => (
+                      <li key={i} className={`word-image-grid-item${editForm.image_url === img.url ? ' is-selected' : ''}`}>
+                        <button
+                          type="button"
+                          className="word-image-thumb-btn"
+                          onClick={() => setEditForm((f) => ({ ...f, image_url: f.image_url === img.url ? '' : img.url }))}
+                          title={img.title}
+                        >
+                          <img src={img.thumbnail} alt={img.title} loading="lazy" className="word-image-thumb" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {!imageSearchOpen && editForm.image_url && (
+              <div className="word-image-selected" style={{ marginTop: '0.5rem' }}>
+                <img src={editForm.image_url} alt="Current" className="word-image-preview" />
+                <button
+                  type="button"
+                  className="secondary word-image-clear"
+                  onClick={() => setEditForm((f) => ({ ...f, image_url: '' }))}
+                >
+                  Remove image
+                </button>
+              </div>
+            )}
+          </div>
 
           <label>
             Source
