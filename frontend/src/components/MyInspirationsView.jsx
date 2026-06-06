@@ -223,6 +223,7 @@ export function MyInspirationsView({
       user_thoughts: i.user_thoughts ?? '',
       source_type: i.source_type ?? 'book',
       reference: i.reference ?? '',
+      tags: i.tags ?? '',
       quote: i.quote ?? '',
       source: i.source ?? null,
       is_inspiring: Boolean(i.is_inspiring),
@@ -272,6 +273,7 @@ export function MyInspirationsView({
         user_thoughts: editRow.user_thoughts,
         source_type: editRow.source_type,
         reference: editRow.reference,
+        tags: editRow.tags,
         quote: editRow.quote,
         source: editRow.source,
         is_inspiring: Boolean(editRow.is_inspiring),
@@ -396,12 +398,21 @@ export function MyInspirationsView({
               />
             </label>
             <label>
-              Essence or summary
+              Essence or summary (optional)
               <input
                 name="essence"
                 value={editRow.essence}
                 onChange={onEditFieldChange}
-                required
+              />
+            </label>
+
+            <label>
+              Tags (optional)
+              <input
+                name="tags"
+                value={editRow.tags}
+                onChange={onEditFieldChange}
+                placeholder="e.g. productivity, creativity"
               />
             </label>
             <label>

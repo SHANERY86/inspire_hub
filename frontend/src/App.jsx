@@ -54,8 +54,10 @@ const emptyStep1 = {
   user_thoughts: '',
   source_type: 'book',
   reference: '',
+  tags: '',
   source: null,
   is_comic_panel: false,
+  is_inspiring: false,
   is_public: false,
 }
 
@@ -428,6 +430,14 @@ function App() {
       setStep1Form((prev) => ({ ...prev, is_comic_panel: checked }))
       return
     }
+    if (type === 'checkbox' && name === 'is_inspiring') {
+      setStep1Form((prev) => ({
+        ...prev,
+        is_inspiring: checked,
+        is_public: checked ? prev.is_public : false,
+      }))
+      return
+    }
     if (type === 'checkbox' && name === 'is_public') {
       setStep1Form((prev) => ({ ...prev, is_public: checked }))
       return
@@ -505,11 +515,13 @@ function App() {
       fd.append('user_thoughts', step1Form.user_thoughts)
       fd.append('source_type', step1Form.source_type)
       fd.append('reference', step1Form.reference)
+      fd.append('tags', step1Form.tags)
       if (step1Form.source != null) {
         fd.append('source', String(step1Form.source))
       }
       fd.append('comic_panel', step1Form.is_comic_panel ? '1' : '0')
       if (currentUser) {
+        fd.append('is_inspiring', step1Form.is_inspiring ? '1' : '0')
         fd.append('is_public', step1Form.is_public ? '1' : '0')
       }
       for (const file of screenshotFiles) {
@@ -535,10 +547,13 @@ function App() {
 
       const data = await response.json()
       const formData = data.form_data ?? {}
+      const inspiring = Boolean(formData.is_inspiring ?? step1Form.is_inspiring)
       setDraftForm({
         ...formData,
         is_comic_panel: Boolean(formData.is_comic_panel),
-        is_public: Boolean(formData.is_public ?? step1Form.is_public),
+        tags: formData.tags ?? step1Form.tags ?? '',
+        is_inspiring: inspiring,
+        is_public: inspiring && Boolean(formData.is_public ?? step1Form.is_public),
       })
       const shots = data.screenshots ?? []
       if (
@@ -565,6 +580,14 @@ function App() {
 
   function onDraftFormChange(event) {
     const { name, value, type, checked } = event.target
+    if (type === 'checkbox' && name === 'is_inspiring') {
+      setDraftForm((prev) =>
+        prev
+          ? { ...prev, is_inspiring: checked, is_public: checked ? prev.is_public : false }
+          : prev,
+      )
+      return
+    }
     if (type === 'checkbox' && name === 'is_public') {
       setDraftForm((prev) => (prev ? { ...prev, is_public: checked } : prev))
       return
@@ -602,6 +625,8 @@ function App() {
       source_type: from.source_type ?? 'book',
       reference: from.reference ?? '',
       source: from.source ?? null,
+      tags: from.tags ?? '',
+      is_inspiring: Boolean(from.is_inspiring),
       is_public: Boolean(from.is_public),
     }
   }
@@ -609,7 +634,9 @@ function App() {
   function goBackToStep1() {
     setStep(1)
     setStep1Form((prev) =>
-      draftForm != null ? { ...prev, is_public: Boolean(draftForm.is_public) } : prev,
+      draftForm != null
+        ? { ...prev, is_inspiring: Boolean(draftForm.is_inspiring), is_public: Boolean(draftForm.is_public) }
+        : prev,
     )
     setDraftForm(null)
     setDraftScreenshots([])
@@ -891,8 +918,10 @@ function App() {
         user_thoughts: draftForm.user_thoughts ?? '',
         source_type: draftForm.source_type,
         reference: draftForm.reference ?? '',
+        tags: draftForm.tags ?? '',
         source: draftForm.source ?? null,
         is_comic_panel: Boolean(draftForm.is_comic_panel),
+        is_inspiring: Boolean(draftForm.is_inspiring),
         is_public: Boolean(draftForm.is_public),
         screenshots: draftScreenshots.map((s) => ({
           image_base64: s.image_base64,
@@ -916,7 +945,12 @@ function App() {
           throw new Error('Write access requires authentication.')
         }
         const body = await response.json().catch(() => ({}))
-        throw new Error(body.detail || `Save failed (${response.status}).`)
+        let errMsg = typeof body.detail === 'string' ? body.detail : ''
+        if (!errMsg && body && typeof body === 'object') {
+          const firstField = Object.values(body).find((v) => Array.isArray(v))
+          if (firstField?.[0]) errMsg = String(firstField[0])
+        }
+        throw new Error(errMsg || `Save failed (${response.status}).`)
       }
 
       const created = await response.json()

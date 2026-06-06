@@ -41,7 +41,7 @@ class Inspiration(models.Model):
         related_name='inspirations',
     )
     source_title = models.CharField(max_length=255)
-    essence = models.CharField(max_length=255)
+    essence = models.CharField(max_length=255, blank=True, default='')
     date = models.DateTimeField(auto_now_add=True)
     quote = models.TextField(blank=True, null=True)  # OCR extracted text
     user_thoughts = models.TextField(blank=True, null=True)
@@ -53,6 +53,12 @@ class Inspiration(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='inspirations',
+    )
+    tags = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Optional comma-separated tags for categorising this inspiration.',
     )
     is_inspiring = models.BooleanField(
         default=False,
@@ -112,6 +118,12 @@ class WordEntry(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='word_entries',
+    )
+    tags = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Optional comma-separated tags for categorising this word.',
     )
     is_inspiring = models.BooleanField(
         default=False,

@@ -197,6 +197,7 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
       definition: w.definition,
       context_sentence: w.context_sentence,
       source: w.source ?? '',
+      tags: w.tags ?? '',
       is_inspiring: w.is_inspiring,
       is_public: w.is_public,
     })
@@ -219,6 +220,7 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
         definition: editForm.definition,
         context_sentence: editForm.context_sentence,
         source: editForm.source === '' ? null : Number(editForm.source),
+        tags: editForm.tags,
         is_inspiring: editForm.is_inspiring,
         is_public: editForm.is_public,
       })
@@ -267,6 +269,15 @@ function WordCard({ word: w, sources, onPatch, onDelete }) {
               value={editForm.context_sentence}
               onChange={(e) => setEditForm((f) => ({ ...f, context_sentence: e.target.value }))}
               rows={3}
+            />
+          </label>
+
+          <label>
+            Tags (optional)
+            <input
+              value={editForm.tags}
+              onChange={(e) => setEditForm((f) => ({ ...f, tags: e.target.value }))}
+              placeholder="e.g. vocabulary, philosophy"
             />
           </label>
 

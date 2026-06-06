@@ -42,6 +42,7 @@ class InspirationDraftPreviewAPIView(APIView):
             'user_thoughts': request.POST.get('user_thoughts', ''),
             'source_type': request.POST.get('source_type', ''),
             'reference': request.POST.get('reference', ''),
+            'tags': request.POST.get('tags', ''),
             'source': source_id,
             'is_comic_panel': comic_panel,
             'is_inspiring': _post_bool(request.POST.get('is_inspiring')),
@@ -99,10 +100,11 @@ class InspirationDraftCommitAPIView(APIView):
         payload = ser.validated_data
         form_data = {
             'source_title': payload['source_title'],
-            'essence': payload['essence'],
+            'essence': payload.get('essence') or '',
             'user_thoughts': payload.get('user_thoughts') or '',
             'source_type': payload['source_type'],
             'reference': payload.get('reference') or '',
+            'tags': payload.get('tags') or '',
             'is_inspiring': bool(payload.get('is_inspiring')),
             'is_public': bool(payload.get('is_public')),
         }
@@ -113,7 +115,7 @@ class InspirationDraftCommitAPIView(APIView):
         if not preview_session_valid(form_data, screenshot_list):
             return Response(
                 {
-                    'detail': 'Incomplete form data. source_title, essence, and source_type are required.',
+                    'detail': 'Incomplete form data. source_title and source_type are required.',
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

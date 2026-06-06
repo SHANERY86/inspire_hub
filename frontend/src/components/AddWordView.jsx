@@ -15,6 +15,7 @@ export function AddWordView({
   const [selectedDef, setSelectedDef] = useState(null)
   const [contextSentence, setContextSentence] = useState('')
   const [sourceId, setSourceId] = useState('')
+  const [tags, setTags] = useState('')
   const [isInspiring, setIsInspiring] = useState(false)
   const [isPublic, setIsPublic] = useState(false)
 
@@ -61,6 +62,7 @@ export function AddWordView({
         part_of_speech: selectedDef.part_of_speech || '',
         context_sentence: contextSentence.trim(),
         source: sourceId ? Number(sourceId) : null,
+        tags: tags.trim(),
         is_inspiring: isInspiring,
         is_public: isPublic,
       })
@@ -69,6 +71,7 @@ export function AddWordView({
       setSelectedDef(null)
       setContextSentence('')
       setSourceId('')
+      setTags('')
       setIsInspiring(false)
       setIsPublic(false)
       setLookupError('')
@@ -83,6 +86,7 @@ export function AddWordView({
     setSelectedDef(null)
     setContextSentence('')
     setSourceId('')
+    setTags('')
     setIsInspiring(false)
     setIsPublic(false)
     setLookupError('')
@@ -172,6 +176,15 @@ export function AddWordView({
               onChange={(e) => setContextSentence(e.target.value)}
               placeholder="Write the sentence from the book where you encountered this word…"
               rows={3}
+            />
+          </label>
+
+          <label>
+            Tags (optional)
+            <input
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="e.g. vocabulary, philosophy"
             />
           </label>
 

@@ -97,6 +97,7 @@ class InspirationSerializer(serializers.ModelSerializer):
             'user_thoughts',
             'source_type',
             'reference',
+            'tags',
             'is_inspiring',
             'is_public',
             'added_by_username',
@@ -202,10 +203,11 @@ class ScreenshotDraftItemSerializer(serializers.Serializer):
 
 class InspirationDraftCommitSerializer(serializers.Serializer):
     source_title = serializers.CharField()
-    essence = serializers.CharField()
+    essence = serializers.CharField(allow_blank=True, required=False, default='')
     user_thoughts = serializers.CharField(allow_blank=True, required=False, default='')
     source_type = serializers.CharField()
     reference = serializers.CharField(allow_blank=True, required=False, default='')
+    tags = serializers.CharField(allow_blank=True, required=False, default='')
     is_comic_panel = serializers.BooleanField(required=False, default=False)
     is_inspiring = serializers.BooleanField(required=False, default=False)
     is_public = serializers.BooleanField(required=False, default=False)
@@ -257,6 +259,7 @@ class WordEntrySerializer(serializers.ModelSerializer):
             'context_sentence',
             'source',
             'source_title',
+            'tags',
             'is_inspiring',
             'is_public',
             'created_at',

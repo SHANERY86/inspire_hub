@@ -141,7 +141,7 @@
         set -eu
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
-        docker compose -f "{{ compose_file }}" up -d --force-recreate backend frontend
+        docker compose -f "{{ compose_file }}" up -d --force-recreate --remove-orphans backend frontend
       args:
         chdir: "{{ inspire_install_dir }}"
 
@@ -174,7 +174,8 @@
       ansible.builtin.shell: |
         set -eu
         docker compose -f "{{ compose_file }}" pull db
-        docker compose -f "{{ compose_file }}" up -d db
+        docker compose -f "{{ compose_file }}" up -d --remove-orphans db
+        docker image prune -f
       args:
         chdir: "{{ inspire_install_dir }}"
       environment:
@@ -215,7 +216,8 @@
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull backend
-        docker compose -f "{{ compose_file }}" up -d backend
+        docker compose -f "{{ compose_file }}" up -d --remove-orphans backend
+        docker image prune -f
       args:
         chdir: "{{ inspire_install_dir }}"
 
@@ -227,7 +229,8 @@
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull frontend
-        docker compose -f "{{ compose_file }}" up -d frontend
+        docker compose -f "{{ compose_file }}" up -d --remove-orphans frontend
+        docker image prune -f
       args:
         chdir: "{{ inspire_install_dir }}"
 
@@ -239,7 +242,8 @@
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull backend frontend
-        docker compose -f "{{ compose_file }}" up -d backend frontend
+        docker compose -f "{{ compose_file }}" up -d --remove-orphans backend frontend
+        docker image prune -f
       args:
         chdir: "{{ inspire_install_dir }}"
 
@@ -251,6 +255,7 @@
         export BACKEND_IMAGE="{{ backend_image }}"
         export FRONTEND_IMAGE="{{ frontend_image }}"
         docker compose -f "{{ compose_file }}" pull
-        docker compose -f "{{ compose_file }}" up -d
+        docker compose -f "{{ compose_file }}" up -d --remove-orphans
+        docker image prune -f
       args:
         chdir: "{{ inspire_install_dir }}"

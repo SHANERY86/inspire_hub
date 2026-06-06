@@ -56,11 +56,12 @@ def commit_inspiration_with_screenshots(
         inspiration = Inspiration.objects.create(
             user=user,
             source_title=form_data['source_title'].strip(),
-            essence=form_data['essence'].strip(),
+            essence=(form_data.get('essence') or '').strip(),
             quote=quote,
             user_thoughts=user_thoughts if user_thoughts else None,
             source_type=form_data['source_type'].strip(),
             reference=reference,
+            tags=(form_data.get('tags') or '').strip(),
             source=source,
             is_inspiring=bool(form_data.get('is_inspiring')),
             is_public=bool(form_data.get('is_public')),

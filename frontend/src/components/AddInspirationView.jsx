@@ -61,11 +61,21 @@ export function AddInspirationView({
           )}
 
           <label>
-            Essence or Summary
+            Essence or Summary (optional)
             <input
               name="essence"
               value={step1Form.essence}
               onChange={onStep1Change}
+            />
+          </label>
+
+          <label>
+            Tags (optional)
+            <input
+              name="tags"
+              value={step1Form.tags}
+              onChange={onStep1Change}
+              placeholder="e.g. productivity, creativity"
             />
           </label>
 
@@ -117,11 +127,27 @@ export function AddInspirationView({
             <label className="checkbox-row">
               <input
                 type="checkbox"
+                name="is_inspiring"
+                checked={Boolean(step1Form.is_inspiring)}
+                onChange={onStep1Change}
+              />
+              Mark as inspiring (shows in spotlight rotation)
+            </label>
+          )}
+
+          {currentUser && (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
                 name="is_public"
                 checked={Boolean(step1Form.is_public)}
                 onChange={onStep1Change}
+                disabled={!step1Form.is_inspiring}
               />
               Show on public home page (visitors without an account can see this inspiration)
+              {!step1Form.is_inspiring && (
+                <span className="hint"> — mark as inspiring first</span>
+              )}
             </label>
           )}
 
@@ -200,7 +226,7 @@ export function AddInspirationView({
           <p className="hint">
             {draftForm.is_comic_panel
               ? 'Confirm details before saving. Every image below is stored as-is (no OCR).'
-              : 'Confirm title, essence or summary, and source type before saving (required). Review captured text below — only the text is saved with your inspiration, not the images.'}
+              : 'Confirm title and source type before saving (required). Review captured text below — only the text is saved with your inspiration, not the images.'}
           </p>
 
           <label>
@@ -214,12 +240,21 @@ export function AddInspirationView({
           </label>
 
           <label>
-            Essence or Summary
+            Essence or Summary (optional)
             <input
               name="essence"
               value={draftForm.essence}
               onChange={onDraftFormChange}
-              required
+            />
+          </label>
+
+          <label>
+            Tags (optional)
+            <input
+              name="tags"
+              value={draftForm.tags ?? ''}
+              onChange={onDraftFormChange}
+              placeholder="e.g. productivity, creativity"
             />
           </label>
 
@@ -334,11 +369,27 @@ export function AddInspirationView({
             <label className="checkbox-row">
               <input
                 type="checkbox"
+                name="is_inspiring"
+                checked={Boolean(draftForm.is_inspiring)}
+                onChange={onDraftFormChange}
+              />
+              Mark as inspiring (shows in spotlight rotation)
+            </label>
+          )}
+
+          {currentUser && (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
                 name="is_public"
                 checked={Boolean(draftForm.is_public)}
                 onChange={onDraftFormChange}
+                disabled={!draftForm.is_inspiring}
               />
               Show on public home page (visitors without an account can see this inspiration)
+              {!draftForm.is_inspiring && (
+                <span className="hint"> — mark as inspiring first</span>
+              )}
             </label>
           )}
 
