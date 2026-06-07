@@ -90,7 +90,7 @@ export function WordLibraryView({
   if (!currentUser) {
     return (
       <section className="view-panel word-library-view my-inspirations-view--sheet">
-        <h1 className="my-inspirations-page-title">Word library</h1>
+        <h1 className="my-inspirations-page-title">Words or Things</h1>
         <p className="hint" style={{ textAlign: 'center' }}>
           <button type="button" className="app-guest-intro-link" onClick={onSignInClick}>
             Sign in
@@ -103,7 +103,7 @@ export function WordLibraryView({
 
   return (
     <section className="view-panel word-library-view my-inspirations-view--sheet">
-      <h1 className="my-inspirations-page-title">Word library</h1>
+      <h1 className="my-inspirations-page-title">Words or Things</h1>
       <p className="my-inspirations-lead">
         {publicOnly
           ? `${baseList.length} public ${baseList.length === 1 ? 'word' : 'words'}`
@@ -178,7 +178,7 @@ export function WordLibraryView({
         <p className="hint" style={{ textAlign: 'center' }}>
           {publicOnly
             ? 'No public words found.'
-            : <>No words yet. Use <strong>Add word</strong> to start building your library.</>}
+            : <>No words yet. Use <strong>Add Word / Thing</strong> to start building your library.</>}
         </p>
       )}
 

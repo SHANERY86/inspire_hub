@@ -162,7 +162,7 @@ export function AddWordView({
 
   return (
     <section className="view-panel add-word-view sheet-surface-card">
-      <h2 className="view-panel-heading">Add word</h2>
+      <h2 className="view-panel-heading">Add Word / Thing</h2>
 
       {/* Mode toggle — only show when not on save form */}
       {!onSaveForm && (

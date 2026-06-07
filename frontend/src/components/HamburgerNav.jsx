@@ -113,7 +113,7 @@ export function HamburgerNav({
                       className={`nav-menu-item${activeView === 'wordLibrary' ? ' is-active' : ''}`}
                       onClick={() => onSelect('wordLibrary')}
                     >
-                      Word library
+                      Words or Things
                     </button>
                   </li>
                   <li>
@@ -122,7 +122,7 @@ export function HamburgerNav({
                       className={`nav-menu-item${activeView === 'addWord' ? ' is-active' : ''}`}
                       onClick={() => onSelect('addWord')}
                     >
-                      Add word
+                      Add Word / Thing
                     </button>
                   </li>
                   <li className="nav-menu-divider" role="presentation" />
