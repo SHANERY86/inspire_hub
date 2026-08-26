@@ -664,10 +664,8 @@ export function MyInspirationsView({
             const reference = (i.reference || '').trim()
             const thoughts = (i.user_thoughts || '').trim()
             const shots = Array.isArray(i.screenshots) ? i.screenshots : []
-            const essenceDisplay =
-              essence || (quote && !essence ? quote : '') || '—'
-            const showQuoteBlock =
-              Boolean(essence) && Boolean(quote) && quote !== essence
+            const showQuoteBlock = Boolean(quote) && quote !== essence
+            const essenceDisplay = essence || (showQuoteBlock ? '' : '—')
 
             return (
               <li key={i.id} className="my-inspirations-list-item">
@@ -714,7 +712,9 @@ export function MyInspirationsView({
                     })}
                   </div>
                 ) : null}
-                <p className="my-inspirations-item-essence">{essenceDisplay}</p>
+                {essenceDisplay && (
+                  <p className="my-inspirations-item-essence">{essenceDisplay}</p>
+                )}
                 {showQuoteBlock ? (
                   <blockquote className="my-inspirations-item-quote">
                     <p>{flowQuoteText(quote)}</p>

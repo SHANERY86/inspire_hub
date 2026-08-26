@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 export function AddWordView({
   currentUser,
   sources,
   onLookupWord,
   onSearchImages,
+  onUploadImage,
   onSaveWord,
   wordFormBusy,
   wordFormMessage,
@@ -38,6 +39,9 @@ export function AddWordView({
   const [imageSearchError, setImageSearchError] = useState('')
   const [imageSearchOpen, setImageSearchOpen] = useState(false)
   const [selectedImageUrl, setSelectedImageUrl] = useState('')
+  const [imageUploadBusy, setImageUploadBusy] = useState(false)
+  const [imageUploadError, setImageUploadError] = useState('')
+  const imageFileInputRef = useRef(null)
 
   if (!currentUser) {
     return (
@@ -76,6 +80,8 @@ export function AddWordView({
     setImageSearchError('')
     setImageSearchOpen(false)
     setSelectedImageUrl('')
+    setImageUploadBusy(false)
+    setImageUploadError('')
   }
 
   function switchMode(next) {
@@ -134,6 +140,22 @@ export function AddWordView({
       setImageSearchError(err.message || 'Image search failed.')
     } finally {
       setImageSearchBusy(false)
+    }
+  }
+
+  async function handleImageFileChange(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImageUploadBusy(true)
+    setImageUploadError('')
+    try {
+      const url = await onUploadImage(file)
+      setSelectedImageUrl(url)
+    } catch (err) {
+      setImageUploadError(err.message || 'Image upload failed.')
+    } finally {
+      setImageUploadBusy(false)
     }
   }
 
@@ -345,13 +367,47 @@ export function AddWordView({
 
           {/* Image search */}
           <div className="word-image-search-block">
-            <button
-              type="button"
-              className="word-image-search-toggle secondary"
-              onClick={() => setImageSearchOpen((o) => !o)}
-            >
-              {imageSearchOpen ? 'Hide image search' : 'Search for an image (optional)'}
-            </button>
+            <div className="word-image-search-actions">
+              <button
+                type="button"
+                className="word-image-search-toggle secondary"
+                onClick={() => setImageSearchOpen((o) => !o)}
+              >
+                {imageSearchOpen ? 'Hide image search' : 'Search for an image (optional)'}
+              </button>
+              <input
+                ref={imageFileInputRef}
+                type="file"
+                accept="image/*"
+                className="visually-hidden"
+                tabIndex={-1}
+                onChange={handleImageFileChange}
+                aria-hidden
+              />
+              <button
+                type="button"
+                className="secondary"
+                disabled={imageUploadBusy}
+                onClick={() => imageFileInputRef.current?.click()}
+              >
+                {imageUploadBusy ? 'Uploading…' : 'Upload from file'}
+              </button>
+            </div>
+
+            {imageUploadError && <p className="error">{imageUploadError}</p>}
+
+            {selectedImageUrl && (
+              <div className="word-image-selected">
+                <img src={selectedImageUrl} alt="Selected" className="word-image-preview" />
+                <button
+                  type="button"
+                  className="secondary word-image-clear"
+                  onClick={() => setSelectedImageUrl('')}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
 
             {imageSearchOpen && (
               <div className="word-image-search-panel">
@@ -373,19 +429,6 @@ export function AddWordView({
                 </div>
 
                 {imageSearchError && <p className="error">{imageSearchError}</p>}
-
-                {selectedImageUrl && (
-                  <div className="word-image-selected">
-                    <img src={selectedImageUrl} alt="Selected" className="word-image-preview" />
-                    <button
-                      type="button"
-                      className="secondary word-image-clear"
-                      onClick={() => setSelectedImageUrl('')}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
 
                 {imageResults.length > 0 && (
                   <ul className="word-image-grid">

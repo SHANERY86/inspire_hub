@@ -756,6 +756,29 @@ function App() {
     return body.images ?? []
   }, [])
 
+  const uploadWordImage = useCallback(async (file) => {
+    const csrf = await fetchSessionCsrf()
+    const fd = new FormData()
+    fd.append('image', file)
+    const response = await fetch(apiUrl('/api/v1/words/image-upload/'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'X-CSRFToken': csrf,
+      },
+      body: fd,
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(
+        typeof body.detail === 'string'
+          ? body.detail
+          : `Image upload failed (${response.status}).`,
+      )
+    }
+    return body.url
+  }, [])
+
   const lookupWord = useCallback(async (word) => {
     const params = new URLSearchParams({ word })
     const response = await fetch(
@@ -1435,6 +1458,7 @@ function App() {
           sources={sources}
           onLookupWord={lookupWord}
           onSearchImages={searchWordImages}
+          onUploadImage={uploadWordImage}
           onSaveWord={saveWord}
           wordFormBusy={wordFormBusy}
           wordFormMessage={wordFormMessage}

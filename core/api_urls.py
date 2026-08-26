@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .dictionary_lookup_view import DictionaryLookupAPIView
 from .recipe_scrape_view import RecipeScrapeAPIView
 from .word_image_search_view import WordImageSearchAPIView
+from .word_image_upload_view import WordImageUploadAPIView
 from .inspiration_api import (
     InspirationDraftCommitAPIView,
     InspirationDraftPreviewAPIView,
@@ -45,6 +46,11 @@ urlpatterns = [
         'words/image-search/',
         WordImageSearchAPIView.as_view(),
         name='word-image-search',
+    ),
+    path(
+        'words/image-upload/',
+        WordImageUploadAPIView.as_view(),
+        name='word-image-upload',
     ),
     path(
         'recipes/scrape/',

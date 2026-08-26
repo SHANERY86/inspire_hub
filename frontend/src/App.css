@@ -1155,6 +1155,7 @@ button.secondary:hover {
 }
 
 .home-spotlight-carousel--multi .home-spotlight-quote-zone {
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -1208,6 +1209,20 @@ button.secondary:hover {
   background: rgba(0, 0, 0, 0.12);
 }
 
+.home-spotlight-shots-thoughts {
+  margin: 0.15rem 0 0;
+  max-width: 32rem;
+  font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: pre-wrap;
+  text-wrap: balance;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.2);
+}
+
 .home-spotlight-attribution {
   margin: 1.35rem 0 0;
   padding-right: 0.15rem;
@@ -1239,6 +1254,8 @@ button.secondary:hover {
   min-width: 2.1rem;
   border: none;
   border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
   font-size: clamp(1.9rem, 4.8vw, 2.55rem);
   font-weight: 200;
   line-height: 0.85;
@@ -1261,13 +1278,85 @@ button.secondary:hover {
   pointer-events: auto;
 }
 
-.home-spotlight-arrow:hover {
-  color: #ffffff;
+.home-spotlight-arrow:hover,
+.home-spotlight-pause:hover {
+  background: transparent;
   transform: scale(1.07);
 }
 
-.home-spotlight-arrow:active {
+.home-spotlight-arrow:active,
+.home-spotlight-pause:active {
+  background: transparent;
   transform: scale(0.95);
+}
+
+.home-spotlight-pause {
+  position: absolute;
+  top: -2.2rem;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  border: none;
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  color: rgba(255, 255, 255, 0.9);
+  background: transparent;
+  cursor: pointer;
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.home-spotlight-pause-icon {
+  position: relative;
+  display: block;
+  width: 1.05rem;
+  height: 1.1rem;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+}
+
+.home-spotlight-pause-icon::before,
+.home-spotlight-pause-icon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 0.32rem;
+  height: 100%;
+  background: currentColor;
+}
+
+.home-spotlight-pause-icon::before {
+  left: 0;
+}
+
+.home-spotlight-pause-icon::after {
+  right: 0;
+}
+
+.home-spotlight-pause--paused .home-spotlight-pause-icon::before {
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border-style: solid;
+  border-width: 0.55rem 0 0.55rem 0.95rem;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.home-spotlight-pause--paused .home-spotlight-pause-icon::after {
+  content: none;
 }
 
 /* —— Home: inspiring word spotlight —— */
@@ -2384,8 +2473,13 @@ button.secondary:hover {
   margin: 0.5rem 0;
 }
 
+.word-image-search-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .word-image-search-toggle {
-  width: 100%;
+  flex: 1;
 }
 
 .word-image-search-panel {

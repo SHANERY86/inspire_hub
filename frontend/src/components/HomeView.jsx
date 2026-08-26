@@ -7,13 +7,28 @@ import {
   SPOTLIGHT_ROTATE_MS,
 } from '../lib/spotlightFonts.js'
 
+/**
+ * OCR line-picking joins kept lines with '\n', so saved quotes often carry hard
+ * breaks at the original screenshot's line width rather than real paragraph
+ * breaks. Re-wrapping those at a narrower (mobile) width leaves short orphan
+ * lines. Treat '\n\n'+ as an intentional paragraph break (kept), collapse any
+ * lone '\n' to a space so the browser can reflow naturally.
+ */
+function collapseHardWraps(text) {
+  return text
+    .split(/\n{2,}/)
+    .map((para) => para.replace(/\s*\n\s*/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n')
+}
+
 /** Quote, OCR text, or summary — anything we can show in the rotating spotlight. */
 function inspirationSpotlightPrimaryText(i) {
-  return (
+  const raw =
     (i.quote || '').trim() ||
     (i.essence || '').trim() ||
     (i.user_thoughts || '').trim()
-  )
+  return collapseHardWraps(raw)
 }
 
 function inspirationHasSpotlightContent(i) {
@@ -107,6 +122,7 @@ export function HomeView({
   const [hoverQuote, setHoverQuote] = useState(false)
   const [touchReveal, setTouchReveal] = useState(false)
   const [touchUi, setTouchUi] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
 
   const randomInitRef = useRef(false)
   const intervalRef = useRef(null)
@@ -118,6 +134,8 @@ export function HomeView({
   const historyPosRef = useRef(-1)
   const fontIdxRef = useRef(fontIdx)
   fontIdxRef.current = fontIdx
+  const isPausedRef = useRef(isPaused)
+  isPausedRef.current = isPaused
 
   useEffect(() => {
     const mql = window.matchMedia('(hover: none), (pointer: coarse)')
@@ -212,6 +230,13 @@ export function HomeView({
     }
   }, [])
 
+  const stopInterval = useCallback(() => {
+    if (intervalRef.current != null) {
+      window.clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [])
+
   const applyRandomSwap = useCallback(() => {
     const list = capturesRef.current
     if (!list.length) return
@@ -239,6 +264,7 @@ export function HomeView({
       window.clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+    if (isPausedRef.current) return
     if (capturesRef.current.length <= 1) return
     intervalRef.current = window.setInterval(fadeThenSwap, SPOTLIGHT_ROTATE_MS)
   }, [fadeThenSwap])
@@ -270,6 +296,15 @@ export function HomeView({
     },
     [clearTimers, scheduleAutoRotate],
   )
+
+  const handlePauseButtonClick = useCallback(() => {
+    if (isPaused) {
+      setIsPaused(false)
+      navigateBy(1)
+    } else {
+      setIsPaused(true)
+    }
+  }, [isPaused, navigateBy])
 
   useEffect(() => {
     if (captures.length === 0) {
@@ -303,13 +338,13 @@ export function HomeView({
   }, [captureIds, captures.length, clearTimers, flashArrowsBriefly])
 
   useEffect(() => {
-    if (captures.length <= 1) {
-      clearTimers()
+    if (captures.length <= 1 || isPaused) {
+      stopInterval()
       return undefined
     }
     scheduleAutoRotate()
-    return clearTimers
-  }, [captureIds, captures.length, clearTimers, scheduleAutoRotate])
+    return stopInterval
+  }, [captureIds, captures.length, isPaused, stopInterval, scheduleAutoRotate])
 
   if (loading) {
     return (
@@ -381,6 +416,7 @@ export function HomeView({
   const shots = (isWord || isRecipe) ? [] : (Array.isArray(active.screenshots) ? active.screenshots : [])
   const showScreenshots = shots.length > 0
   const captured = (isWord || isRecipe) ? '' : inspirationSpotlightPrimaryText(active)
+  const shotsThoughts = (isWord || isRecipe) ? '' : (active.user_thoughts || '').trim()
   const fontStack = SPOTLIGHT_FONTS[fontIdx % SPOTLIGHT_FONTS.length].stack
 
   const contributor = (isWord || isRecipe)
@@ -466,6 +502,11 @@ export function HomeView({
               />
             ) : null
           })}
+          {shotsThoughts && (
+            <p className="home-spotlight-shots-thoughts" style={{ fontFamily: fontStack }}>
+              {shotsThoughts}
+            </p>
+          )}
         </div>
       ) : (
         <p
@@ -544,6 +585,20 @@ export function HomeView({
               onClick={() => navigateBy(1)}
             >
               →
+            </button>
+            <button
+              type="button"
+              className={
+                isPaused
+                  ? 'home-spotlight-pause home-spotlight-pause--paused'
+                  : 'home-spotlight-pause'
+              }
+              aria-label={isPaused ? 'Next inspiration and resume rotation' : 'Pause spotlight rotation'}
+              aria-pressed={isPaused}
+              tabIndex={0}
+              onClick={handlePauseButtonClick}
+            >
+              <span className="home-spotlight-pause-icon" aria-hidden="true" />
             </button>
           </div>
         ) : (
