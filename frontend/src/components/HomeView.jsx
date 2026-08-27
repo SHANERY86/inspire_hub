@@ -164,7 +164,13 @@ export function HomeView({
 
   useEffect(() => {
     const mql = window.matchMedia('(hover: none), (pointer: coarse)')
-    const sync = () => setTouchUi(mql.matches)
+    const sync = () => {
+      setTouchUi(mql.matches)
+      // A tap can fire a synthetic mouseenter with no matching mouseleave,
+      // leaving hoverQuote stuck true (and the arrows stuck visible) — drop
+      // it once we know this is a touch device.
+      if (mql.matches) setHoverQuote(false)
+    }
     sync()
     mql.addEventListener('change', sync)
     return () => mql.removeEventListener('change', sync)
@@ -633,8 +639,8 @@ export function HomeView({
                 ? 'home-spotlight-quote-zone home-spotlight-quote-zone--arrows-on'
                 : 'home-spotlight-quote-zone'
             }
-            onMouseEnter={() => setHoverQuote(true)}
-            onMouseLeave={() => setHoverQuote(false)}
+            onMouseEnter={touchUi ? undefined : () => setHoverQuote(true)}
+            onMouseLeave={touchUi ? undefined : () => setHoverQuote(false)}
             onPointerDown={onQuotePointerDown}
             onPointerUp={onQuotePointerUp}
             onPointerCancel={onQuotePointerUp}
