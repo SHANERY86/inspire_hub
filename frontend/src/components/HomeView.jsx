@@ -499,7 +499,15 @@ export function HomeView({
     <div className="home-spotlight-capture-wrap" style={fadeStyle}>
       {isWord && active.image_url ? (
         <div className="home-spotlight-word">
-          <img src={active.image_url} alt={active.word} className="home-spotlight-word-image" />
+          <img
+            src={active.image_url}
+            alt={active.word}
+            className="home-spotlight-word-image"
+            onClick={(e) => {
+              e.stopPropagation()
+              openShotZoom(active.image_url)
+            }}
+          />
           <p className="home-spotlight-word-term" style={{ fontFamily: fontStack }}>
             {active.word}
           </p>
@@ -513,7 +521,15 @@ export function HomeView({
       ) : isRecipe ? (
         <div className="home-spotlight-recipe">
           {active.image_url && (
-            <img src={active.image_url} alt={active.title} className="home-spotlight-word-image" />
+            <img
+              src={active.image_url}
+              alt={active.title}
+              className="home-spotlight-word-image"
+              onClick={(e) => {
+                e.stopPropagation()
+                openShotZoom(active.image_url)
+              }}
+            />
           )}
           <p className="home-spotlight-recipe-title" style={{ fontFamily: fontStack }}>
             {active.title}

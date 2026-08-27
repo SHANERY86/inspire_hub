@@ -2759,4 +2759,5 @@ button.secondary:hover {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.12);
   margin-bottom: 1rem;
+  cursor: zoom-in;
 }
