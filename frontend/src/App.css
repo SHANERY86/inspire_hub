@@ -1207,6 +1207,40 @@ button.secondary:hover {
   border-radius: 10px;
   box-shadow: 0 4px 28px rgba(0, 0, 0, 0.25);
   background: rgba(0, 0, 0, 0.12);
+  cursor: zoom-in;
+}
+
+.home-spotlight-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+  background: rgba(0, 0, 0, 0.86);
+  cursor: zoom-out;
+  animation: home-spotlight-zoom-fade-in 0.18s ease;
+}
+
+.home-spotlight-zoom-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes home-spotlight-zoom-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .home-spotlight-shots-thoughts {

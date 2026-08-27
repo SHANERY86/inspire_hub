@@ -59,6 +59,28 @@ function shuffleArray(arr) {
   return a
 }
 
+/**
+ * Draw the next capture index from a shuffled "bag" (deal through a shuffled
+ * deck, reshuffle once it's empty) instead of picking uniformly at random
+ * each time. Plain random-different-from-previous still lets the same item
+ * come up repeatedly within a short run (e.g. twice in the first 5 picks);
+ * a bag guarantees every item is shown once before any repeats.
+ */
+function drawFromBag(bagRef, len, avoidIdx) {
+  if (len <= 1) return 0
+  if (bagRef.current.length === 0) {
+    const bag = shuffleArray(Array.from({ length: len }, (_, i) => i))
+    // Avoid a same-item repeat across the reshuffle boundary (last of the
+    // old bag vs. first of the new one).
+    if (bag[0] === avoidIdx) {
+      const swapWith = 1 + Math.floor(Math.random() * (bag.length - 1))
+      ;[bag[0], bag[swapWith]] = [bag[swapWith], bag[0]]
+    }
+    bagRef.current = bag
+  }
+  return bagRef.current.shift()
+}
+
 export function HomeView({
   loading,
   error,
@@ -123,6 +145,7 @@ export function HomeView({
   const [touchReveal, setTouchReveal] = useState(false)
   const [touchUi, setTouchUi] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [zoomedShotSrc, setZoomedShotSrc] = useState(null)
 
   const randomInitRef = useRef(false)
   const intervalRef = useRef(null)
@@ -132,10 +155,12 @@ export function HomeView({
   const touchHideTimerRef = useRef(null)
   const historyRef = useRef(/** @type {number[]} */ ([]))
   const historyPosRef = useRef(-1)
+  const bagRef = useRef(/** @type {number[]} */ ([]))
   const fontIdxRef = useRef(fontIdx)
   fontIdxRef.current = fontIdx
   const isPausedRef = useRef(isPaused)
   isPausedRef.current = isPaused
+  const pausedByZoomRef = useRef(false)
 
   useEffect(() => {
     const mql = window.matchMedia('(hover: none), (pointer: coarse)')
@@ -241,7 +266,7 @@ export function HomeView({
     const list = capturesRef.current
     if (!list.length) return
     const currentIdx = historyRef.current[historyPosRef.current] ?? 0
-    const newIdx = pickDifferentIndex(currentIdx, list.length)
+    const newIdx = drawFromBag(bagRef, list.length, currentIdx)
     const newFontIdx = pickDifferentIndex(fontIdxRef.current, SPOTLIGHT_FONTS.length)
     historyRef.current = historyRef.current.slice(0, historyPosRef.current + 1)
     historyRef.current.push(newIdx)
@@ -282,7 +307,7 @@ export function HomeView({
           setDisplayIdx(historyRef.current[historyPosRef.current])
         } else {
           const currentIdx = historyRef.current[historyPosRef.current] ?? 0
-          const newIdx = pickDifferentIndex(currentIdx, list.length)
+          const newIdx = drawFromBag(bagRef, list.length, currentIdx)
           historyRef.current = historyRef.current.slice(0, historyPosRef.current + 1)
           historyRef.current.push(newIdx)
           historyPosRef.current = historyRef.current.length - 1
@@ -297,7 +322,31 @@ export function HomeView({
     [clearTimers, scheduleAutoRotate],
   )
 
+  const openShotZoom = useCallback((src) => {
+    if (!isPausedRef.current) {
+      pausedByZoomRef.current = true
+      setIsPaused(true)
+    }
+    setZoomedShotSrc(src)
+  }, [])
+
+  const closeShotZoom = useCallback(() => {
+    setZoomedShotSrc(null)
+    if (pausedByZoomRef.current) {
+      pausedByZoomRef.current = false
+      setIsPaused(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    setZoomedShotSrc(null)
+    pausedByZoomRef.current = false
+  }, [captureIds])
+
   const handlePauseButtonClick = useCallback(() => {
+    // Manual pause/resume always takes precedence over a zoom-induced pause.
+    pausedByZoomRef.current = false
+    setZoomedShotSrc(null)
     if (isPaused) {
       setIsPaused(false)
       navigateBy(1)
@@ -307,6 +356,9 @@ export function HomeView({
   }, [isPaused, navigateBy])
 
   useEffect(() => {
+    // The pool of eligible captures changed, so any previously drawn bag of
+    // indices no longer lines up with it — start a fresh bag.
+    bagRef.current = []
     if (captures.length === 0) {
       randomInitRef.current = false
       historyRef.current = []
@@ -316,7 +368,7 @@ export function HomeView({
     }
     if (!randomInitRef.current) {
       randomInitRef.current = true
-      const idx = Math.floor(Math.random() * captures.length)
+      const idx = drawFromBag(bagRef, captures.length, -1)
       historyRef.current = [idx]
       historyPosRef.current = 0
       setDisplayIdx(idx)
@@ -499,6 +551,10 @@ export function HomeView({
                 src={src}
                 alt=""
                 className="home-spotlight-shot"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openShotZoom(src)
+                }}
               />
             ) : null
           })}
@@ -605,6 +661,20 @@ export function HomeView({
           spotlightBody
         )}
       </div>
+      {zoomedShotSrc && (
+        <div
+          className="home-spotlight-zoom-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Close full-size screenshot"
+          onClick={closeShotZoom}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') closeShotZoom()
+          }}
+        >
+          <img src={zoomedShotSrc} alt="" className="home-spotlight-zoom-image" />
+        </div>
+      )}
     </section>
   )
 }
