@@ -526,6 +526,37 @@ class TestInspirationDraftPreview:
 
 
 @pytest.mark.django_db
+class TestInspirationThoughtsOcr:
+    url = '/api/v1/inspiration-drafts/ocr/'
+
+    def test_returns_raw_text(self, authenticated_api_client, monkeypatch):
+        monkeypatch.setattr(
+            'core.inspiration_api.ocr_image_text', lambda f: 'line one\nline two'
+        )
+        r = authenticated_api_client.post(
+            self.url, {'image': _tiny_jpeg_upload()}, format='multipart'
+        )
+        assert r.status_code == status.HTTP_200_OK
+        assert r.data == {'text': 'line one\nline two'}
+
+    def test_missing_image_returns_400(self, authenticated_api_client):
+        r = authenticated_api_client.post(self.url, {}, format='multipart')
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_ocr_failure_returns_502_with_detail(self, authenticated_api_client, settings):
+        settings.OCR_SPACE_API_KEY = ''
+        r = authenticated_api_client.post(
+            self.url, {'image': _tiny_jpeg_upload()}, format='multipart'
+        )
+        assert r.status_code == status.HTTP_502_BAD_GATEWAY
+        assert 'OCR_SPACE_API_KEY' in r.data['detail']
+
+    def test_unauthenticated_returns_403(self, api_client):
+        r = api_client.post(self.url, {'image': _tiny_jpeg_upload()}, format='multipart')
+        assert r.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
 class TestInspirationDraftCommit:
     def test_commit_links_optional_source(self, authenticated_api_client, api_user):
         src = Source.objects.create(

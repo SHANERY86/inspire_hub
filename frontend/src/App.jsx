@@ -646,6 +646,44 @@ function App() {
     setDraftForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  async function ocrImageText(file) {
+    const csrf = await fetchSessionCsrf()
+    const fd = new FormData()
+    fd.append('image', file)
+    const response = await fetch(apiUrl('/api/v1/inspiration-drafts/ocr/'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-CSRFToken': csrf },
+      body: fd,
+    })
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Sign in again to read text from images.')
+      }
+      const body = await response.json().catch(() => ({}))
+      throw new Error(body.detail || `Text recognition failed (${response.status}).`)
+    }
+    const data = await response.json()
+    return typeof data.text === 'string' ? data.text : ''
+  }
+
+  /** Append OCR text to "your thoughts" on the step-1 form or the step-2 draft. */
+  function appendThoughtsText(target, text) {
+    const append = (prev) => {
+      if (!prev) return prev
+      const current = prev.user_thoughts ?? ''
+      return {
+        ...prev,
+        user_thoughts: current.trim() ? `${current.trimEnd()}\n${text}` : text,
+      }
+    }
+    if (target === 'draft') {
+      setDraftForm(append)
+    } else {
+      setStep1Form(append)
+    }
+  }
+
   function onScreenshotTextChange(index, extracted_text) {
     setDraftScreenshots((prev) =>
       prev.map((s, i) => (i === index ? { ...s, extracted_text } : s)),
@@ -1373,6 +1411,8 @@ function App() {
           onDraftFormChange={onDraftFormChange}
           draftScreenshots={draftScreenshots}
           onScreenshotTextChange={onScreenshotTextChange}
+          onOcrImageText={ocrImageText}
+          onAppendThoughtsText={appendThoughtsText}
           onCommitSubmit={onCommitSubmit}
           goBackToStep1={goBackToStep1}
           formError={formError}

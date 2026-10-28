@@ -8,6 +8,7 @@ from .word_image_upload_view import WordImageUploadAPIView
 from .inspiration_api import (
     InspirationDraftCommitAPIView,
     InspirationDraftPreviewAPIView,
+    InspirationThoughtsOcrAPIView,
 )
 from .session_auth_views import (
     SessionCsrfView,
@@ -61,6 +62,11 @@ urlpatterns = [
         'inspiration-drafts/preview/',
         InspirationDraftPreviewAPIView.as_view(),
         name='inspiration-draft-preview',
+    ),
+    path(
+        'inspiration-drafts/ocr/',
+        InspirationThoughtsOcrAPIView.as_view(),
+        name='inspiration-thoughts-ocr',
     ),
     path(
         'inspiration-drafts/commit/',

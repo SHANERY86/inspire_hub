@@ -1,5 +1,6 @@
 import { ExtractedTextPickerPanel } from './ExtractedTextPickerPanel.jsx'
 import { imageDataUrl } from '../lib/images.js'
+import { ThoughtsTextarea } from './ThoughtsTextarea.jsx'
 
 export function AddInspirationView({
   currentUser,
@@ -19,6 +20,8 @@ export function AddInspirationView({
   onDraftFormChange,
   draftScreenshots,
   onScreenshotTextChange,
+  onOcrImageText,
+  onAppendThoughtsText,
   onCommitSubmit,
   goBackToStep1,
   formError,
@@ -79,15 +82,13 @@ export function AddInspirationView({
             />
           </label>
 
-          <label>
-            Your thoughts (optional if you add screenshots)
-            <textarea
-              name="user_thoughts"
-              value={step1Form.user_thoughts}
-              onChange={onStep1Change}
-              rows={3}
-            />
-          </label>
+          <ThoughtsTextarea
+            label="Your thoughts (optional if you add screenshots)"
+            value={step1Form.user_thoughts}
+            onChange={onStep1Change}
+            onOcrImageText={onOcrImageText}
+            onAppendText={(text) => onAppendThoughtsText('step1', text)}
+          />
 
           <label>
             Source type
@@ -258,15 +259,13 @@ export function AddInspirationView({
             />
           </label>
 
-          <label>
-            Your thoughts
-            <textarea
-              name="user_thoughts"
-              value={draftForm.user_thoughts ?? ''}
-              onChange={onDraftFormChange}
-              rows={3}
-            />
-          </label>
+          <ThoughtsTextarea
+            label="Your thoughts"
+            value={draftForm.user_thoughts ?? ''}
+            onChange={onDraftFormChange}
+            onOcrImageText={onOcrImageText}
+            onAppendText={(text) => onAppendThoughtsText('draft', text)}
+          />
 
           <label>
             Source type

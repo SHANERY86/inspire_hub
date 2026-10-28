@@ -7,7 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .inspiration_commit import commit_inspiration_with_screenshots
-from .ocr_service import extract_text_from_upload, uploaded_file_to_base64
+from .ocr_service import (
+    OcrError,
+    extract_text_from_upload,
+    ocr_image_text,
+    uploaded_file_to_base64,
+)
 from .preview_payload import preview_session_valid
 from .models import Source
 from .serializers import InspirationDraftCommitSerializer, InspirationSerializer
@@ -79,6 +84,29 @@ class InspirationDraftPreviewAPIView(APIView):
                 'screenshots': screenshot_data,
             }
         )
+
+
+class InspirationThoughtsOcrAPIView(APIView):
+    """
+    POST multipart: one `image` file. Returns JSON { text } with the raw OCR text,
+    for filling the "your thoughts" field (no screenshot is kept).
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        upload = request.FILES.get('image')
+        if not upload:
+            return Response(
+                {'detail': 'No image file provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            text = ocr_image_text(upload)
+        except OcrError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response({'text': text})
 
 
 class InspirationDraftCommitAPIView(APIView):
